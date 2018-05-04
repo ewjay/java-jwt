@@ -3,9 +3,12 @@ package com.auth0.msg;
 import java.util.List;
 import java.util.Map;
 
-public class RegistrationRequest extends AbstractMessage{
+public class JsonResponseDescriptor extends AbstractMessage{
 
-    public RegistrationRequest(Map<String, Object> claims){
+    public JsonResponseDescriptor() {
+    }
+
+    public JsonResponseDescriptor(Map<String, Object> claims) {
         super(claims);
     }
 
@@ -16,12 +19,12 @@ public class RegistrationRequest extends AbstractMessage{
 
     @Override
     public Map<String, Object> getClaims() throws InvalidClaimsException {
-        return null;
+        return super.getClaims();
     }
 
     @Override
     public MessageType getMessageType() {
-        return MessageType.REGISTRATION_REQUEST;
+        return MessageType.JSON_RESPONSE_DESCRIPTOR;
     }
 
     @Override

@@ -10,6 +10,7 @@ import java.util.Map;
 
 public class Claim {
     public String name;
+
     @JsonProperty("map")
     @JsonDeserialize(keyUsing = ClaimDeserializer.class)
     public Map<MessageType, List<Object>> allowedValues;
@@ -44,6 +45,10 @@ public class Claim {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Map<MessageType, List<Object>> getAllowedValues() {
+        return allowedValues;
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.auth0.msg;
 
 import java.lang.reflect.Array;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -22,10 +23,13 @@ public enum ClaimType {
 //        this.name = name;
 //        this.allowedValues = allowedValues;
 //    }
+    BOOLEAN("Boolean", Boolean.class),
     STRING("String", String.class),
-    INT("Int", int.class),
+    INT("Int", Integer.class),
     LIST("List", List.class),
-    ARRAY("Array", Array.class);
+    ARRAY("Array", Array.class),
+    DATE("Date", Date.class),
+    LONG("Long", Long.class);
 
     private final String type;
     private final Class classType;

@@ -11,8 +11,8 @@ public class MessageUtil {
      * @param urlEncoded the urlEncoded String representation of a message
      * @return a map of the key value pairs encoded in the string parameter
      */
-    private Map<Claim, Object> claims;
-    public MessageUtil(Map<Claim, Object> claims){
+    private Map<String, Object> claims;
+    public MessageUtil(Map<String, Object> claims){
         this.claims = claims;
     }
     public static Map<String, Object> claimsFromUrlEncoded(String urlEncoded) throws Exception {
@@ -20,8 +20,15 @@ public class MessageUtil {
         Map<String, Object> values = new HashMap<String, Object>();
         return values;
     }
-    public Map<Claim, Object> getClaims(){
+    public Map<String, Object> getClaims(){
         return this.claims;
+    }
+    /**
+     * @param String endpoint to base the request url on
+     * @return a String for the representation of the formatted request
+     */
+    public String getRequestWithEndpoint(String authorizationEndpoint) {
+        return null;
     }
 
 }

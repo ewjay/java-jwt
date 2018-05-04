@@ -3,8 +3,6 @@ package com.auth0.msg;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.exceptions.JWTCreationException;
-import com.auth0.jwt.impl.PublicClaims;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -16,18 +14,14 @@ import org.apache.commons.codec.binary.StringUtils;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * This abstract class provides basic processing of messages
  */
 public abstract class AbstractMessage implements Message {
-    private Map<Claim, Object> claims;
+    private Map<String, Object> claims;
     private Map<String, Object> header; // There are only headers when fromJwt/ToJwt is called
     private String input;
     private Error error = null;
@@ -35,14 +29,11 @@ public abstract class AbstractMessage implements Message {
     ObjectMapper mapper = new ObjectMapper();
 
     protected AbstractMessage() {
-        this(Collections.<Claim, Object>emptyMap());
+        this(Collections.<String, Object>emptyMap());
     }
 
-    protected AbstractMessage(Map<Claim, Object> claims) {
+    protected AbstractMessage(Map<String, Object> claims) {
         this.claims = claims;
-        SimpleModule simpleModule = new SimpleModule();
-        simpleModule.addKeyDeserializer(Claim.class, new ClaimDeserializer());
-        mapper.registerModule(simpleModule);
     }
 
     /**
@@ -76,8 +67,8 @@ public abstract class AbstractMessage implements Message {
         this.input = input;
         try {
             // Convert JSON string to Object
-            TypeReference<HashMap<Claim, String>> typeRef
-                    = new TypeReference<HashMap<Claim, String>>() {};
+//            TypeReference<HashMap<String, String>> typeRef
+//                    = new TypeReference<HashMap<String, String>>() {};
             AbstractMessage msg = mapper.readValue(input, this.getClass());
             this.claims = msg.getClaims();
         } catch (JsonGenerationException e) {
@@ -150,10 +141,52 @@ public abstract class AbstractMessage implements Message {
      * verify that the required claims are present
      * @return whether the verification passed
      */
-    public boolean verify() {
+    protected boolean verify() {
         //This method will set error if verification fails
-        return true;
+        List<String> errors = new ArrayList<String>();
+
+        List<String> reqClaims = getRequiredClaims();
+        if (!reqClaims.isEmpty() && this.claims.isEmpty()){
+            errors.add("The required claims are missing");
+            return false;
+        }
+
+        StringBuilder errorSB = new StringBuilder();
+        for (String req: reqClaims) {
+            if (!claims.containsKey(req)) {
+                errors.add("This message is missing required claim: " + req);
+                errorSB.append(req);
+            }
+        }
+
+        if (errorSB.length() != 0) {
+            errors.add("Message is missing required claims:" + errorSB.toString());
+            return false;
+        }
+
+        List<String> customClaims = new ArrayList<String>();
+        for(String claimName : claims.keySet()) {
+            // if knownClaim, validate claim
+            if (ClaimsValidator.isKnownClaim(claimName)) {
+                Boolean valid = ClaimsValidator.validate(claimName, claims.get(claimName), getMessageType());
+                if (!valid) {
+                    errors.add(claimName + "is an invalid claim");
+                }
+            } else {
+                customClaims.add(claimName);
+            }
+        }
+        if (!errors.isEmpty()) {
+            String aggregateError = "";
+            for (String err: errors){
+                aggregateError += err;
+            }
+            throw new InvalidClaimsException(aggregateError);
+        }
+        return false;
     }
+
+    public abstract MessageType getMessageType();
 
     /**
      * add the claim to this instance of message
@@ -161,16 +194,8 @@ public abstract class AbstractMessage implements Message {
      * @param Object the value of the claim to add to this instance of Message
      * @return a Message representation of the Json
      */
-    public void addClaim(Claim name, Object value) {
+    public void addString(String name, Object value) {
         // verify 'name’ is a valid claim and then check the type is valid before adding
-    }
-
-    /**
-     * @param String endpoint to base the request url on
-     * @return a String for the representation of the formatted request
-     */
-    public String getRequestWithEndpoint(String authorizationEndpoint) {
-        return null;
     }
 
     /**
@@ -183,8 +208,8 @@ public abstract class AbstractMessage implements Message {
     /**
      * @return List of the list of claims for this messsage
      */
-    public Map<Claim, Object> getClaims(){
-        verify();
+    public Map<String, Object> getClaims(){
+//        verify();
         return this.claims;
     }
 
@@ -196,9 +221,26 @@ public abstract class AbstractMessage implements Message {
     }
 
     /**
+     * add the claim to this instance of message
+     * @param String the name of the claim
+     * @param Object the value of the claim to add to this instance of Message
+     * @return a Message representation of the Json
+     */
+    public void addClaim(String name, Object value) {
+        // verify 'name’ is a valid claim and then check the type is valid before adding
+    }
+
+    /**
      * @return List of the list of standard required claims for this messsage type
      */
-    abstract protected List<Claim> getRequiredClaims();
+    abstract protected List<String> getRequiredClaims();
+
+    protected void reset(){
+        this.input = null;
+        this.claims = null;
+        this.error = null;
+        this.verified = false;
+    }
 
     @Override
     public String toString() {

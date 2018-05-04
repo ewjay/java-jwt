@@ -5,23 +5,23 @@ import java.util.Map;
 
 public class RegistrationResponse extends AbstractMessage{
 
-    public RegistrationResponse(Map<Claim, Object> claims){
+    public RegistrationResponse(Map<String, Object> claims){
         super(claims);
     }
 
     @Override
-    protected List<Claim> getRequiredClaims() {
+    protected List<String> getRequiredClaims() {
         return null;
     }
 
     @Override
-    public Map<Claim, Object> getClaims() throws InvalidClaimsException {
+    public Map<String, Object> getClaims() throws InvalidClaimsException {
         return null;
     }
 
     @Override
-    public String getRequestWithEndpoint(String authorizationEndpoint, DataLocation location) {
-        return null;
+    public MessageType getMessageType() {
+        return MessageType.REGISTRATION_RESPONSE;
     }
 
     @Override

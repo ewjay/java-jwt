@@ -8,24 +8,23 @@ public class ProviderConfigurationResponse extends AbstractMessage{
     public ProviderConfigurationResponse() {
     }
 
-
-    public ProviderConfigurationResponse(Map<Claim, Object> claims){
+    public ProviderConfigurationResponse(Map<String, Object> claims){
         super(claims);
     }
 
     @Override
-    protected List<Claim> getRequiredClaims() {
+    protected List<String> getRequiredClaims() {
         return null;
     }
 
     @Override
-    public Map<Claim, Object> getClaims() throws InvalidClaimsException {
+    public Map<String, Object> getClaims() throws InvalidClaimsException {
         return super.getClaims();
     }
 
     @Override
-    public String getRequestWithEndpoint(String authorizationEndpoint, DataLocation location) {
-        return null;
+    public MessageType getMessageType() {
+        return MessageType.PROVIDER_CONFIGURATION_RESPONSE;
     }
 
     @Override

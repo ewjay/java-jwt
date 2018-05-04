@@ -63,31 +63,18 @@ public interface Message {
     void fromJwt(String input, KeyJar jar);
 
     /**
-     * verify that the required claims are present
-     * @return whether the verification passed
-     */
-    boolean verify();
-
-    /**
      *
      * @param name of the claim
      * @param value of the claim
      */
-    void addClaim(Claim name, Object value);
+    void addClaim(String name, Object value);
 
     /**
      *
      * @return Map of claims
      * @throws InvalidClaimsException
      */
-    Map<Claim, Object> getClaims() throws InvalidClaimsException;
-
-    /**
-     *
-     * @param String authorization endpoint
-     */
-    String getRequestWithEndpoint(String authorizationEndpoint, DataLocation location);
-
+    Map<String, Object> getClaims() throws InvalidClaimsException;
     /**
      * @return the error object representing an error in verification
      */
