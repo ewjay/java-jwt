@@ -28,11 +28,6 @@ public class JsonResponseDescriptor extends AbstractMessage{
     }
 
     @Override
-    public boolean hasError() {
-        return false;
-    }
-
-    @Override
     public boolean allowCustomClaims() {
         return false;
     }

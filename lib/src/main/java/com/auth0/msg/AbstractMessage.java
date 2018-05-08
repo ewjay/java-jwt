@@ -16,6 +16,7 @@ import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+
 /**
  * This abstract class provides basic processing of messages
  */
@@ -25,7 +26,7 @@ public abstract class AbstractMessage implements Message {
     private String input;
     private Error error = null;
     private boolean verified = false;
-    ObjectMapper mapper = new ObjectMapper();
+    protected ObjectMapper mapper = new ObjectMapper();
 
     protected AbstractMessage() {
         this(Collections.<String, Object>emptyMap());
@@ -237,6 +238,13 @@ public abstract class AbstractMessage implements Message {
      * @return enum Name of the message subtype
      */
     abstract protected MessageType fetchMessageType();
+
+    /**
+     * @return boolean for whether there is an error in verification
+     */
+    public boolean hasError(){
+        return this.error != null;
+    }
 
     @Override
     public String toString() {

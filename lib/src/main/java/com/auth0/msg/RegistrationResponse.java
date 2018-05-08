@@ -25,11 +25,6 @@ public class RegistrationResponse extends AbstractMessage{
     }
 
     @Override
-    public boolean hasError() {
-        return false;
-    }
-
-    @Override
     public boolean allowCustomClaims() {
         return false;
     }
