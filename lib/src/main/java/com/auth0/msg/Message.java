@@ -28,39 +28,30 @@ public interface Message {
 
     /**
      * Serialize the content of this instance (the claims map) into a jwt string
-     * @param Key the signing key
-     * @param String the algorithm to use in signing the JWT
-     * @return a jwt String
-     * @throws InvalidClaimsException
-     */
-    String toJwt(Key key, Algorithm algorithm) throws InvalidClaimsException, SerializationException;
-
-    /**
-     * Serialize the content of this instance (the claims map) into a jwt string
      * @param KeyJar the signing keyjar
      * @param String the algorithm to use in signing the JWT
      * @return a jwt String
-     * @throws InvalidClaimsException
+     * @throws InvalidClaimException
      */
-    String toJwt(KeyJar jar, Algorithm algorithm) throws InvalidClaimsException, SerializationException;
+    String toJwt(KeyJar jar, Algorithm algorithm) throws SerializationException, JsonProcessingException;
 
     /**
      * Logic to extract from the string the values
      * @param input The JSON String representation of a message
      */
-    void fromJson(String input);
+    void fromJson(String input) throws InvalidClaimException;
 
     /**
      * @param input the urlEncoded String representation of a message
      */
-    void fromUrlEncoded(String input) throws MalformedURLException, IOException;
+    void fromUrlEncoded(String input) throws MalformedURLException, IOException, InvalidClaimException;
 
     /**
      *
      * @param input the jwt String representation of a message
      * @param KeyJar that might contain the necessary key
      */
-    void fromJwt(String input, KeyJar jar);
+    void fromJwt(String input, KeyJar jar) throws InvalidClaimException;
 
     /**
      *
@@ -72,9 +63,9 @@ public interface Message {
     /**
      *
      * @return Map of claims
-     * @throws InvalidClaimsException
+     * @throws InvalidClaimException
      */
-    Map<String, Object> getClaims() throws InvalidClaimsException;
+    Map<String, Object> getClaims() throws InvalidClaimException;
     /**
      * @return the error object representing an error in verification
      */

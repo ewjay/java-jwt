@@ -9,27 +9,14 @@ import java.util.List;
  * This enum specifies the claims and their allowed values to enable validation of messages
  */
 public enum ClaimType {
-//    GRANT_TYPE("grant_type", Arrays.asList("refresh_token")),
-//    ERROR("error", Arrays.asList("invalid_request", "unauthorized_client")),
-//    ISSUER("issuer", Arrays.asList("*")),
-//    CLIENT_ID("client_id", Arrays.asList("*")),
-//    KEY_JAR("key_jar", Arrays.asList("*")),
-//    SHOULD_VERIFY("should_verify", Arrays.asList("*"));
-//
-//    private final String name;
-//    private final List<String> allowedValues;
-//
-//    ClaimType(String name, List<String> allowedValues) {
-//        this.name = name;
-//        this.allowedValues = allowedValues;
-//    }
     BOOLEAN("Boolean", Boolean.class),
     STRING("String", String.class),
     INT("Int", Integer.class),
     LIST("List", List.class),
     ARRAY("Array", Array.class),
     DATE("Date", Date.class),
-    LONG("Long", Long.class);
+    LONG("Long", Long.class),
+    ID_TOKEN("ID_Token", IDToken.class);
 
     private final String type;
     private final Class classType;

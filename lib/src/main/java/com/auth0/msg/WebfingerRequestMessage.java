@@ -3,12 +3,11 @@ package com.auth0.msg;
 import java.util.List;
 import java.util.Map;
 
-public class ProviderConfigurationResponse extends AbstractMessage{
-
-    public ProviderConfigurationResponse() {
+public class WebfingerRequestMessage extends AbstractMessage {
+    public WebfingerRequestMessage() {
     }
 
-    public ProviderConfigurationResponse(Map<String, Object> claims){
+    public WebfingerRequestMessage(Map<String, Object> claims){
         super(claims);
     }
 
@@ -24,7 +23,7 @@ public class ProviderConfigurationResponse extends AbstractMessage{
 
     @Override
     public MessageType fetchMessageType() {
-        return MessageType.PROVIDER_CONFIGURATION_RESPONSE;
+        return MessageType.WEBFINGER_REQUEST_MESSAGE;
     }
 
     @Override

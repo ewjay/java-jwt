@@ -18,17 +18,22 @@ public class JsonResponseDescriptor extends AbstractMessage{
     }
 
     @Override
-    public Map<String, Object> getClaims() throws InvalidClaimsException {
+    public Map<String, Object> getClaims() throws InvalidClaimException {
         return super.getClaims();
     }
 
     @Override
-    public MessageType getMessageType() {
+    public MessageType fetchMessageType() {
         return MessageType.JSON_RESPONSE_DESCRIPTOR;
     }
 
     @Override
     public boolean hasError() {
+        return false;
+    }
+
+    @Override
+    public boolean allowCustomClaims() {
         return false;
     }
 }
