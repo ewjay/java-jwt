@@ -3,6 +3,7 @@ package com.auth0.msg;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -69,6 +70,7 @@ public abstract class AbstractMessage implements Message {
         try {
             AbstractMessage msg = mapper.readValue(input, this.getClass());
             this.claims = msg.getClaims();
+            System.out.println(this.claims);
         } catch (JsonGenerationException e) {
             e.printStackTrace();
         } catch (JsonMappingException e) {
@@ -94,23 +96,30 @@ public abstract class AbstractMessage implements Message {
 
     /**
      * @param input the jwt String representation of a message
-     * @param KeyJar that might contain the necessary key
      */
-    public void fromJwt(String input, KeyJar jar) {
+    public void fromJwt(String input) throws IOException {
         this.reset();
         this.input = input;
-
-        //This will have logic to parse Jwt to claims
+        String[] parts = MessageUtil.splitToken(input);
+        String headerJson;
+        String payloadJson;
+        try {
+            headerJson = StringUtils.newStringUtf8(Base64.decodeBase64(parts[0]));
+            payloadJson = StringUtils.newStringUtf8(Base64.decodeBase64(parts[1]));
+        } catch (NullPointerException e) {
+            throw new JWTDecodeException("The UTF-8 Charset isn't initialized.", e);
+        }
+        this.header = mapper.readValue(headerJson, Map.class);
+        this.claims = mapper.readValue(payloadJson, Map.class);
     }
 
     /**
      * Serialize the content of this instance (the claims map) into a jwt string
-     * @param KeyJar the signing keyjar
-     * @param String the algorithm to use in signing the JWT
+     * @param algorithm the algorithm to use in signing the JWT
      * @return a jwt String
      * @throws InvalidClaimException
      */
-    public String toJwt(KeyJar keyjar, Algorithm algorithm) throws
+    public String toJwt(Algorithm algorithm) throws
             JsonProcessingException, SerializationException {
         header.put("alg", algorithm.getName());
         header.put("typ", "JWT");
@@ -120,6 +129,7 @@ public abstract class AbstractMessage implements Message {
         }
         JWTCreator.Builder newBuilder = JWT.create().withHeader(this.header);
         for (String claimName: claims.keySet()){
+            // TODO this needs to be extended for all claim types
             Object value = claims.get(claimName);
             if (value instanceof Boolean) {
                 newBuilder.withClaim(claimName, (Boolean) value);
@@ -144,17 +154,18 @@ public abstract class AbstractMessage implements Message {
         StringBuilder errorSB = new StringBuilder();
 
         List<String> reqClaims = getRequiredClaims();
-        if (!reqClaims.isEmpty() && this.claims.isEmpty()){
+        if (reqClaims != null && this.claims.isEmpty()){
             errorMessages.add("Not all of the required claims for this message type are present");
         } else {
-            for (String req : reqClaims) {
-                if (!claims.containsKey(req)) {
-                    errorSB.append(" " + req);
+            if (reqClaims != null) {
+                for (String req : reqClaims) {
+                    if (!claims.containsKey(req)) {
+                        errorSB.append(" " + req);
+                    }
                 }
-            }
-
-            if (errorSB.length() != 0) {
-                errorMessages.add("Message is missing required claims:" + errorSB.toString());
+                if (errorSB.length() != 0) {
+                    errorMessages.add("Message is missing required claims:" + errorSB.toString());
+                }
             }
 
             errorSB = new StringBuilder();
@@ -215,8 +226,8 @@ public abstract class AbstractMessage implements Message {
 
     /**
      * add the claim to this instance of message
-     * @param String the name of the claim
-     * @param Object the value of the claim to add to this instance of Message
+     * @param name the name of the claim
+     * @param value the value of the claim to add to this instance of Message
      */
     public void addClaim(String name, Object value) {
         this.claims.put(name, value);

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import org.hamcrest.CoreMatchers;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -14,6 +15,7 @@ import static org.junit.Assert.assertThat;
 
 import java.io.StringWriter;
 import java.util.HashMap;
+import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.is;
 
@@ -59,12 +61,8 @@ public class AbstractMessageTest {
         String testJson = "{\"claims\":{\"GRANT_TYPE\":\"refresh_token\"},\"error\":null}";
         ProviderConfigurationResponse pcr = new ProviderConfigurationResponse(claims);
         pcr.fromJson(testJson);
-        assertEquals(pcr.getClaims(),claims);
-// TODO
-//        String jsonPCR = "{\"claims\":{\"GRANT_TYPE\":\"refresh_token\"},\"error\":null}";
-//        ProviderConfigurationResponse pcrOut = new ProviderConfigurationResponse();
-//        pcrOut.fromJson(jsonPCR);
-//        assertThat(pcrOut.getClaims(), CoreMatchers.<Map<Claim, Object>>is(claims));
-//        assertThat(pcrOut.getError(), is(nullValue()));
+        Map<String, Object> claims2 = pcr.getClaims();
+
+        assertEquals(pcr.getClaims(), claims);
     }
 }

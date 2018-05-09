@@ -17,6 +17,7 @@ public enum ClaimType {
     DATE("Date", Date.class),
     LONG("Long", Long.class),
     ID_TOKEN("ID_Token", IDToken.class);
+    // TODO There are potentially other claim types that have not been included
 
     private final String type;
     private final Class classType;

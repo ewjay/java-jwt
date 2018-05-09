@@ -41,7 +41,8 @@ public final class ClaimsValidator {
         grant_type_values.put(CC_ACCESS_TOKEN_REQUEST, Arrays.asList((Object)"client_credentials"));
         knownClaims.put("grant_type", new Claim("grant_type", grant_type_values, STRING));
 
-        //TODO Add all known claims
+        // TODO Not all known claims are here. Refer to the table at the bottom of the OICMSG API documentation:
+        // https://docs.google.com/document/d/1-N0n7UopFaIhzA5X-j1fhBgAR-kImbKoqgSVTUmixEI/edit?usp=sharing
     }
 
     public static boolean isKnownClaim (String name){
@@ -57,6 +58,7 @@ public final class ClaimsValidator {
         // is for a list of string developer may only provide one string. Our validate should allow that value but at the end update
         // the value to a list of one string
         Claim targetClaim = knownClaims.get(claimName);
+        // TODO: The logic below needs to be changed
         switch (targetClaim.getType()) {
             case ID_TOKEN:
                 ((IDToken) value).verify();

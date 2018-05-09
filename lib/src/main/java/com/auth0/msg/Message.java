@@ -33,7 +33,7 @@ public interface Message {
      * @return a jwt String
      * @throws InvalidClaimException
      */
-    String toJwt(KeyJar jar, Algorithm algorithm) throws SerializationException, JsonProcessingException;
+    String toJwt(Algorithm algorithm) throws SerializationException, JsonProcessingException;
 
     /**
      * Logic to extract from the string the values
@@ -51,7 +51,7 @@ public interface Message {
      * @param input the jwt String representation of a message
      * @param KeyJar that might contain the necessary key
      */
-    void fromJwt(String input, KeyJar jar) throws InvalidClaimException;
+    void fromJwt(String input) throws IOException;
 
     /**
      *
