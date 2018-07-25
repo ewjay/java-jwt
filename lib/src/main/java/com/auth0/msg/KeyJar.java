@@ -1,14 +1,15 @@
-/*
-package com.auth0.jwt.oicmsg;
+
+package com.auth0.msg;
 
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ImportException;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.TypeError;
-import com.auth0.jwt.impl.JWTParser;
-import com.auth0.jwt.jwts.JWT;
-import com.google.common.base.Strings;
+import org.apache.commons.codec.binary.Base64;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.junit.Assert;
 import org.slf4j.LoggerFactory;
-
 import java.security.KeyException;
 import java.util.*;
 import java.util.logging.Logger;
@@ -16,21 +17,18 @@ import java.util.logging.Logger;
 public class KeyJar {
 
     private boolean verifySSL;
-    private KeyBundle keyBundle;
     private float removeAfter;
     private Map<String,List<KeyBundle>> issuerKeys;
     final private static org.slf4j.Logger logger = LoggerFactory.getLogger(KeyJar.class);
 
-    public KeyJar(boolean verifySSL, KeyBundle keyBundle, int removeAfter) {
+    public KeyJar(boolean verifySSL, int removeAfter) {
         this.verifySSL = verifySSL;
-        this.keyBundle = keyBundle;
         this.removeAfter = removeAfter;
+        issuerKeys = new HashMap<String, List<KeyBundle>>();
     }
 
     public KeyJar() throws ImportException {
-        this.verifySSL = true;
-        this.keyBundle = new KeyBundle();
-        this.removeAfter = 3600;
+        this(true, 3600);
     }
 
     public KeyBundle addUrl(String owner, String url, Map<String,String> args) throws KeyException, ImportException {
@@ -50,31 +48,39 @@ public class KeyJar {
         return keyBundle;
     }
 
-    public void addSymmetricKey(String owner, Key key, List<String> usage) throws ImportException {
+    /**
+     * Add Symmetric Key to Jar using
+     * @param owner
+     * @param k symmetric key bytes
+     * @param usage list of uses for the key
+     * @throws ImportException
+     */
+    public void addSymmetricKey(String owner, byte[] k, List<String> usage) throws ImportException {
         if(!issuerKeys.containsKey(owner)) {
             issuerKeys.put(owner, new ArrayList<KeyBundle>());
         }
-
-        Key key = b64e(key.toString().getBytes());
+        String b64Key = Base64.encodeBase64URLSafeString(k);
         if(usage == null || usage.isEmpty()) {
-            List<KeyBundle> kbList = new ArrayList<>();
-            List<Key> keyList = new ArrayList<>(Arrays.asList(key));
-            KeyBundle kb = new KeyBundle(keyList, "oct");
-            kbList.add(kb);
-            issuerKeys.put(owner, kbList);
+            HashMap<String, Object> jwk = new HashMap<String, Object>();
+            jwk.put("kty", "oct");
+            jwk.put("k", b64Key);
+            ArrayList<Map<String, Object>> keyList =
+                    new ArrayList<Map<String, Object>>(Arrays.asList(jwk));
+            KeyBundle kb = new KeyBundle(keyList);
+            addKeyBundle(owner, kb);
         } else {
-            List<KeyBundle> kbList;
-            List<Key> keyList;
-            KeyBundle kb;
-            List<String> usageList = new ArrayList<>();
+            ArrayList<Map<String, Object>> keyList =
+                    new ArrayList<Map<String, Object>>();
+
             for(String use : usage) {
-                kbList = issuerKeys.get(owner);
-                keyList = new ArrayList<>(Arrays.asList(key));
-                usageList.add(use);
-                kb = new KeyBundle(keyList, "oct", usageList);
-                kbList.add(kb);
-                issuerKeys.put(owner, kbList);
+                HashMap<String, Object> jwk = new HashMap<String, Object>();
+                jwk.put("kty", "oct");
+                jwk.put("k", b64Key);
+                jwk.put("use", use);
+                keyList.add(jwk);
             }
+            KeyBundle kb = new KeyBundle(keyList);
+            addKeyBundle(owner, kb);
         }
     }
 
@@ -82,16 +88,19 @@ public class KeyJar {
         List<KeyBundle> kbList;
         if(issuerKeys.get(owner) == null) {
             kbList = new ArrayList<>(Arrays.asList(keyBundle));
-            issuerKeys.put(owner, kbList);
         } else {
             kbList = issuerKeys.get(owner);
             kbList.add(keyBundle);
-            issuerKeys.put(owner, kbList);
         }
+        issuerKeys.put(owner, kbList);
     }
 
-    public Collection<List<KeyBundle>> getItems() {
-        return this.issuerKeys.values();
+    public Map<String, List<KeyBundle>> getBundles() {
+        return issuerKeys;
+    }
+
+    public void setBundle(String owner, List<KeyBundle> kbList) {
+        issuerKeys.put(owner, kbList);
     }
 
     public List<Key> getKeys(String keyUse, String keyType, String owner, String kid, Map<String,String> args) {
@@ -103,7 +112,7 @@ public class KeyJar {
         }
 
         List<KeyBundle> keyBundleList = null;
-        if(owner != null && !owner.isEmpty()) {
+        if(!Utils.isNullOrEmpty(owner)) {
             keyBundleList = this.issuerKeys.get(owner);
 
             if(keyBundleList == null) {
@@ -124,7 +133,7 @@ public class KeyJar {
         List<Key> keyListReturned = new ArrayList<>();
         List<Key> keyList = new ArrayList<>();
         for(KeyBundle keyBundle : keyBundleList) {
-            if(keyType != null && !keyType.isEmpty()) {
+            if(!Utils.isNullOrEmpty(keyType)) {
                 keyList = keyBundle.get(keyType);
             } else {
                 keyList = keyBundle.getKeys();
@@ -136,10 +145,11 @@ public class KeyJar {
                 }
                 if(key.getUse() != null || use.equals(key.getUse())) {
                     if(kid != null) {
-                        if(key.getKid().equals(kid)) {
+                        if(kid.equals(key.getKid())) {
                             keyListReturned.add(key);
                             break;
-                        }
+                        } else
+                            continue;
                     } else {
                         keyListReturned.add(key);
                     }
@@ -147,26 +157,25 @@ public class KeyJar {
             }
         }
 
+        // if elliptic curve have to check I have a key of the right curve
         String name;
         if(keyType.equals("EC") && args.containsKey("alg")) {
-            name = "P-{}" + args.get("alg").substring(2);
+            name = "P-" + args.get("alg").substring(2);
             List<Key> tempKeyList = new ArrayList<>();
             for(Key key : keyList) {
-                try {
-                    Assert.assertTrue(name.equals(((ECKey) key).getCrv()));
-                } catch (AssertionError error) {
+                ECKey ecKey = (ECKey) key;
+                if(!name.equals(ecKey.getCrv()))
                     continue;
-                } finally {
+                else
                     tempKeyList.add(key);
-                }
             }
             keyList = tempKeyList;
         }
 
-        if(use.equals("enc") && keyType.equals("oct") && owner != null && !owner.isEmpty()) {
+        if(use.equals("enc") && keyType.equals("oct") && !Utils.isNullOrEmpty(owner)) {
             for(KeyBundle keyBundle : this.issuerKeys.get("")) {
                 for(Key key : keyBundle.get(keyType)) {
-                    if(key.getUse() == null || key.getUse() == use) {
+                    if(key.getUse() == null || key.getUse().equals(use)) {
                         keyList.add(key);
                     }
                 }
@@ -237,6 +246,10 @@ public class KeyJar {
         }
     }
 
+    public List<String> getOwners() {
+       return Arrays.asList(issuerKeys.keySet().toArray(new String[0]));
+    }
+
     public String matchOwner(String url) throws KeyException {
         for(String key : this.issuerKeys.keySet()) {
             if(url.startsWith(key)) {
@@ -247,14 +260,30 @@ public class KeyJar {
         throw new KeyException(String.format("No keys for %s", url));
     }
 
-    public void loadKeys(Map<String,String> pcr, String issuer, boolean shouldReplace) {
+    public void loadKeys(Map<String,Object> pcr, String issuer, boolean shouldReplace) {
         logger.debug("loading keys for issuer: " + issuer);
 
         if(shouldReplace || !this.issuerKeys.keySet().contains(issuer)) {
             this.issuerKeys.put(issuer, new ArrayList<KeyBundle>());
         }
+        String jwksUri = (String) pcr.get("jwks_uri");
+        if(!Utils.isNullOrEmpty(jwksUri)) {
 
-        //this.addUrl(null, issuer, pcr.get("jwks_uri"));  ??
+        } else {
+            Object jwks = (String) pcr.get("jwks");
+            if(jwks != null) {
+                if(jwks instanceof Map) {
+                    Map<String, Object> keys = (Map<String, Object>) ((Map)jwks).get("keys");
+                    if(keys != null) {
+                        try {
+                            addKeyBundle(issuer, new KeyBundle(Arrays.asList(keys)));
+                        }
+                        catch(ImportException e) {
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public KeyBundle find(String source, String issuer) {
@@ -267,38 +296,47 @@ public class KeyJar {
         return null;
     }
 
-    public Map<String,List<Key>> exportsJwks(boolean isPrivate, String issuer) {
-        List<Key> keys = new ArrayList<>();
+    public Map<String,List<Map<String, Object>>> exportsJwks(boolean isPrivate, String issuer) {
+        List<Map<String, Object>> keys = new ArrayList<>();
         for(KeyBundle keyBundle : this.issuerKeys.get(issuer)) {
             for(Key key : keyBundle.getKeys()) {
                 if(key.getInactiveSince() == 0) {
-                    keys.addAll(key.serialize());
+                    try {
+                        keys.add(key.serialize(isPrivate));
+                    }
+                    catch (SerializationNotPossible e) {
+                    }
                 }
             }
         }
 
-        Map<String,List<Key>> keysMap = new HashMap<>();
+        Map<String,List<Map<String, Object>>> keysMap = new HashMap<>();
         keysMap.put("keys", keys);
         return keysMap;
     }
 
-    public Map<String,List<Key>> exportJwksAsJson(boolean isPrivate, String issuer) {
-        return this.exportsJwks(isPrivate, issuer);
+    public String exportJwksAsJson(boolean isPrivate, String issuer) {
+        JSONObject json = new JSONObject(exportsJwks(isPrivate, issuer));
+        return json.toJSONString();
     }
 
-    public void importJwks(Map<String,String> jwks, String issuer) throws ImportException {
-        String keys = jwks.get("keys");
-        List<KeyBundle> keyBundleList = this.issuerKeys.get("issuer");
-        if(keyBundleList == null) {
-            keyBundleList = new ArrayList<>();
+    public void importJwks(Map<String,Object> jwks, String issuer) throws ImportException {
+        Object keysObj = jwks.get("keys");
+        if(keysObj instanceof List) {
+            List<Object> keysList = (List<Object>) jwks.get("keys");
+            if(!keysList.isEmpty()) {
+                if(keysList.get(0) instanceof Map) {
+                    List<Map<String, Object>> keysMap = (List<Map<String, Object>>) keysList.get(0);
+                    addKeyBundle(issuer, new KeyBundle(keysMap, "", 0, verifySSL, "jwk", "", null));
+                }
+            }
         }
-
-        keyBundleList.add(new KeyBundle(keys, this.verifySSL));
-        this.issuerKeys.put(issuer, keyBundleList);
     }
 
-    public void importJwksAsJson(String js, String issuer) {
-        importJwks();
+    public void importJwksAsJson(String js, String issuer) throws ParseException, ImportException{
+        JSONParser parser = new JSONParser();
+        JSONObject json = (JSONObject) parser.parse(js);
+        importJwks(json, issuer);
     }
 
     public void removeOutdated(int when) throws TypeError {
@@ -321,13 +359,13 @@ public class KeyJar {
     }
 
     public List<Key> addKey(List<Key> keys, String owner, String use, String keyType, String kid,
-                            Map<String,List<String>> noKidIssuer) {
+                            Map<String,List<String>> noKidIssuer, boolean allowMissingKid) {
         if(!this.issuerKeys.keySet().contains(owner)) {
             logger.error("Issuer " + owner + " not in keyjar");
             return keys;
         }
 
-        logger.debug("Key set summary for " + owner + " : " + keySummary(this, owner));
+//        logger.debug("Key set summary for " + owner + " : " + keySummary(this, owner));
 
         if(kid != null) {
             for(Key key : this.getKeys(use, owner, kid, keyType, null)) {
@@ -337,13 +375,15 @@ public class KeyJar {
             }
             return keys;
         } else {
-            List<Key> keyList = this.getKeys(use, "", owner, keyType, null);
+            List<Key> keyList = this.getKeys(use, keyType, owner, "", null);
             if(keyList.size() == 0) {
                 return keys;
             } else if(keyList.size() == 1) {
                 if(!keys.contains(keyList.get(0))) {
                     keys.add(keyList.get(0));
                 }
+            } else if(allowMissingKid) {
+                keys.addAll(keyList);
             } else if(noKidIssuer != null) {
                 List<String> allowedKids = noKidIssuer.get(owner);
                 if(allowedKids != null) {
@@ -352,29 +392,43 @@ public class KeyJar {
                             keys.add(key);
                         }
                     }
-                } else {
-                    keys.addAll(keyList);
                 }
             }
         }
         return keys;
     }
 
-    public void getJwtVerifyKeys(JWT jwt, Map<String,String> args) {
-        List<Key> keyList = new ArrayList<>();
-        JWTParser converter = new JWTParser();
-        String keyType = algorithmToKeytypeForJWS(converter.parseHeader(jwttoString().getHeader().getAlgorithm().getName());
-        String kid = jwt.getHeader().;
-        String nki = args.get("no_kid_issuer");
+//    public void getJwtVerifyKeys(JWT jwt, Map<String,String> args) {
+//        List<Key> keyList = new ArrayList<>();
+//        JWTParser converter = new JWTParser();
+//        String keyType = algorithmToKeytypeForJWS(converter.parseHeader(jwttoString().getHeader().getAlgorithm().getName());
+//        String kid = jwt.getHeader().;
+//        String nki = args.get("no_kid_issuer");
+//
+//    }
+
+    public void getJWTVerifyKeys(String jwt, Map<String, Object> args) {
 
     }
 
     public KeyJar copy() throws ImportException {
         KeyJar keyJar = new KeyJar();
         for(String owner : this.issuerKeys.keySet()) {
-            //kj[owner] = [kb.copy() for kb in self[owner]]; how is kj[owner] being caled??
-        }
+            for(KeyBundle kb : issuerKeys.get(owner)) {
+                keyJar.addKeyBundle(owner, kb.copy());
+            }
+         }
         return keyJar;
     }
+
+    public static KeyJar buildKeyJar(Map<String, Object> keyConf, String kidTemplate, KeyJar keyJar, Map<String, Object> kidd) {
+
+        return null;
+    }
+
+    public static KeyJar initKeyJar(String publicPath, String privatePath, String keyDefs, String issuer) {
+
+        return null;
+    }
 }
-*/
+

@@ -1,18 +1,39 @@
-/*
-package com.auth0.jwt.oicmsg;
+
+package com.auth0.msg;
 
 import com.auth0.jwt.exceptions.oicmsg_exceptions.DeserializationNotPossible;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.JWKException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
-import org.bouncycastle.util.encoders.Base64;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.UnknownKeyType;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
+import org.bouncycastle.jce.provider.PEMUtil;
+import org.bouncycastle.util.io.pem.PemObject;
+import org.bouncycastle.util.io.pem.PemReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.commons.codec.binary.Base64;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.*;
+import java.util.Arrays;
+import java.util.Map;
 
-import java.util.*;
 
 public class RSAKey extends Key {
 
     final private static Logger logger = LoggerFactory.getLogger(RSAKey.class);
-    private static Set<String> longs = new HashSet<String>(Arrays.asList("n", "e", "d", "p", "q", "dp", "dq", "di", "qi"));
     private String n;
     private String e;
     private String d;
@@ -20,16 +41,18 @@ public class RSAKey extends Key {
     private String q;
     private String dp;
     private String dq;
-    private String di;
     private String qi;
-    private String key;
+    private String oth;
 
-    public RSAKey(String kty, String alg, String use, String kid, String x5c, String x5t, String x5u, Key key, String n,
-                  String e, String d, String p, String q, String dp, String dq, String di, String qi, Map<String, String> args) {
-        super(kty, alg, use, kid, x5c, x5t, x5u, key, args);
+    public RSAKey(String alg, String use, String kid, String[] x5c, String x5t,
+                  String x5u, java.security.Key key, String n, String e, String d, String p,
+                  String q, String dp, String dq, String qi, String oth, Map<String, String> args)
+            throws JWKException{
+        super("RSA", alg, use, kid, x5c, x5t, x5u, key, args);
         members.addAll(Arrays.asList("n", "e", "d", "p", "q"));
+        longs.addAll(Arrays.asList("n", "e", "d", "p", "q", "dp", "dq", "qi", "oth"));
         publicMembers.addAll(Arrays.asList("n", "e"));
-        required = new HashSet<String>(Arrays.asList("kty", "n", "e"));
+        required.addAll(Arrays.asList("n", "e"));
         this.n = n;
         this.e = e;
         this.d = d;
@@ -37,165 +60,292 @@ public class RSAKey extends Key {
         this.q = q;
         this.dp = dp;
         this.dq = dq;
-        this.di = di;
         this.qi = qi;
+        this.oth = oth; // TODO should be an array of oths
 
-        boolean hasPublicKeyParts = this.n.length() > 0 && this.n.length() == this.e.length();
-        boolean hasX509CertChain = this.getX5c().length() > 0;
+        boolean hasPublicKeyParts = (!Utils.isNullOrEmpty(n))  &&
+                (!Utils.isNullOrEmpty(n));
+        boolean hasX509CertChain = this.x5c != null && this.x5c.length > 0;
 
-        if (this.getKey() == null && (hasPublicKeyParts || hasX509CertChain)) {
-            this.deserialize();
-        } else if (this.getKey() != null && !(this.n != null && this.e != null)) {
-            this.split();
-        }
+        if (this.key != null ) {
+            _serializeRSAKey(this.key);
+        } else if (hasPublicKeyParts) {
+            deserialize();
+        } else if (hasX509CertChain) {
+            deserialize();
+        }else if (this.n == null && this.e == null) {
+
+        } else
+            throw new JWKException("Missing required parameter");
     }
 
-    public RSAKey(String use) {
-        this("RSA", "", use, "", "", "", "", null, "", "", "", "", "", "", "", "", "", null);
+    public RSAKey(String use) throws JWKException {
+        this("", use, "", null, "", "", null, "", "", "", "", "", "", "", "", "", null);
     }
 
+    public RSAKey(java.security.Key key) throws JWKException {
+        this("", "", "", null, "", "", key, "", "", "", "", "", "", "", "", "", null);
+    }
+
+    @Override
+    /**
+     *  Based on a text based representation of an RSA key this method
+     *  instantiates a
+     *  RSAPrivateKey or
+     *  RSAPublicKey instance
+     */
     public void deserialize() throws DeserializationNotPossible {
-        if (this.n != null && this.e != null) {
-            Object item = null;
-            for (String param : longs) {
-                try {
-                    item = this.getClass().getField(param).get(this);
-                    if (item == null || (item instanceof Number)) {
-                        continue;
-                    } else {
-                        item = deserialize(item);
-                    }
-                } catch (Exception e1) {
-                    logger.error("Field " + param + " doesn't exist");
-                } finally {
-                    try {
-                        this.getClass().getField(param).set(param, item);
-                    } catch (Exception e1) {
-                        logger.error("Field " + param + " doesn't exist");
-                    }
+
+        try {
+            if(key == null) {
+                if(isPrivateKey()) {
+                    BigInteger n = Utils.base64urlToBigInt(this.n);
+                    BigInteger e = Utils.base64urlToBigInt(this.e);
+                    BigInteger d = Utils.base64urlToBigInt(this.d);
+                    BigInteger p = Utils.base64urlToBigInt(this.p);
+                    BigInteger q = Utils.base64urlToBigInt(this.q);
+                    BigInteger dp = Utils.base64urlToBigInt(this.dp);
+                    BigInteger dq = Utils.base64urlToBigInt(this.dq);
+                    BigInteger qi = Utils.base64urlToBigInt(this.qi);
+
+                    RSAPrivateCrtKeySpec privSpec = new RSAPrivateCrtKeySpec(n, e, d, p, q, dp, dq, qi);
+                    KeyFactory factory = KeyFactory.getInstance("RSA");
+                    this.key = factory.generatePrivate(privSpec);
+
+                } else if(checkPublicKeyMembers()) {
+                    BigInteger n = Utils.base64urlToBigInt(this.n);
+                    BigInteger e = Utils.base64urlToBigInt(this.e);
+                    RSAPublicKeySpec pubSpec = new RSAPublicKeySpec(n, e);
+                    KeyFactory factory = KeyFactory.getInstance("RSA");
+                    this.key = factory.generatePublic(pubSpec);
+                }
+
+                if(x5c != null && x5c.length > 0) {
+                    // TODO handle certs
                 }
             }
-
-            List<String> list = new ArrayList<>(Arrays.asList(this.n, this.e));
-            if(this.d != null && !this.d.isEmpty()) {
-                list.add(this.d);
-            }
-            if(this.p != null && !this.p.isEmpty()) {
-                list.add(this.p);
-                if(this.q != null && !this.q.isEmpty()) {
-                    list.add(this.q);
-                }
-                this.key = RSA.construct(tuple(list));  //TODO
-            } else {
-                this.key = RSA.construct(list) //TODO
-            }
-        } else if (this.x5c != null) {
-            Base64.decode((int) this.x5c.getBytes()[0]);
-
-            if(this.x5t != null) {
-                if(Base64.decode()   != )
-
-            }
-
-            this.key =;
-            this.split();
-            if(this.x5c.length() > 1) {
-
-            }
-        } else {
-            throw new DeserializationNotPossible();
+            if(key == null)
+                throw new DeserializationNotPossible("");
+        }
+        catch(NoSuchAlgorithmException | InvalidKeySpecException e) {
+            throw new DeserializationNotPossible(e.toString());
         }
     }
 
-    public Map<String,String> serialize(boolean isPrivate) throws SerializationNotPossible {
-        if(this.key == null) {
+    @Override
+     /**
+     * Given a RSAPrivateKey or
+     * RSAPublicKey instance construct the JWK representation.
+     * param private: Should I do the private part or not
+     * return: A JWK as a dictionary
+     * @param isPrivate whether to get private key part
+     * @return a JWK as as dictionary
+     * @throws SerializationNotPossible
+     */
+     public Map<String,Object> serialize(boolean isPrivate) throws SerializationNotPossible {
+        if(key == null) {
             throw new SerializationNotPossible();
         }
-
-        Map<String, String> args = common();
-
-        publicMembers.addAll(longs);
-        List<String> publicLongs = new ArrayList<>(publicMembers);
-        for(String param : publicLongs) {
-            try {
-                Object item = this.getClass().getField(param).get(this);
-                if(item != null) {
-                    args.put(param, longToBase64(item));
-                }
-            } catch (Exception e1) {
-                logger.error("Field " + param + " doesn't exist");
-            }
-        }
-
+        Map<String, Object> args = common();
         if(isPrivate) {
-            for(String param : longs) {
-                if(!isPrivate && new ArrayList<>(Arrays.asList("d", "p", "q", "dp", "dq", "di",
-                        "qi")).contains(param)) {
-                    continue;
-                }
-                try {
-                    Object item = this.getClass().getField(param).get(this);
-                    if (item != null) {
-                        args.put(param, longToBase64(item));
-                    }
-                } catch (Exception e1) {
-                    logger.error("Field " + param + " doesn't exist");
-                }
-
+            if(!checkPrivateKeyMembers()) {
+                _serializeRSAKey(key);
             }
+            if(!checkPrivateKeyMembers())
+                throw new SerializationNotPossible();
+            args.put("n", n);
+            args.put("e", e);
+            args.put("d", d);
+            args.put("p", p);
+            args.put("q", q);
+            args.put("dp", dp);
+            args.put("dq", dq);
+            args.put("qi", qi);
+
+        } else {
+            if(!checkPublicKeyMembers())
+                _serializeRSAKey(key);
+            if(!checkPublicKeyMembers())
+                throw new SerializationNotPossible();
+            args.put("n", n);
+            args.put("e", e);
         }
 
+        if(x5c != null && x5c.length > 0) {
+            args. put("x5c", x5c);
+        }
         return args;
     }
 
-    private void split() {
-        this.n = this.key.n;
-        this.e = this.key.e;
+    public static RSAKey loadKey(java.security.Key key) throws JWKException {
+         return new RSAKey(key);
+    }
 
-        try {
-            this.d = this.key.d;
-        } catch (AttributeError e) {
+    public static RSAKey load(String file) throws Exception{
+        RSAPrivateCrtKey key = (RSAPrivateCrtKey) getPemPrivateKey(file, "RSA");
+        return loadKey(key);
+    }
 
-        } finally {
-            Object item = null;
-            for(String param : new ArrayList<>(Arrays.asList("p", "q"))) {
-                try {
-                    item = this.getClass().getField(param).get(this);
-                } catch (Exception e1) {
-                    logger.error("Field " + param + " doesn't exist");
-                } finally {
-                    if(item != null) {
-                        //set attribute (which is in the form of a string) to a value
-                    }
-                }
+    public java.security.Key encryptionKey() throws DeserializationNotPossible{
+        if(this.key == null)
+            deserialize();
+        return this.key;
+    }
+
+
+    private void _serializeRSAKey(java.security.Key key) {
+        if(key instanceof RSAPrivateCrtKey) {
+            RSAPrivateCrtKey privateKey = (RSAPrivateCrtKey) key;
+            n = Utils.bigIntToBase64url(privateKey.getModulus());
+            e = Utils.bigIntToBase64url(privateKey.getPublicExponent());
+            d = Utils.bigIntToBase64url(privateKey.getPrivateExponent());
+            p = Utils.bigIntToBase64url(privateKey.getPrimeP());
+            q = Utils.bigIntToBase64url(privateKey.getPrimeQ());
+            dp = Utils.bigIntToBase64url(privateKey.getPrimeExponentP());
+            dq = Utils.bigIntToBase64url(privateKey.getPrimeExponentQ());
+
+        } else if(key instanceof RSAPublicKey) {
+            RSAPublicKey publicKey = (RSAPublicKey) key;
+            n = Utils.bigIntToBase64url(publicKey.getModulus());
+            e = Utils.bigIntToBase64url(publicKey.getPublicExponent());
+        }
+    }
+
+    @Override
+    public boolean isPrivateKey() {
+
+        if(key != null) {
+            if(key instanceof RSAPrivateKey)
+                return true;
+        } else {
+            if( checkPrivateKeyMembers()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean checkPrivateKeyMembers() {
+         return (!Utils.isNullOrEmpty(n) &&
+                 !Utils.isNullOrEmpty(e) &&
+                 !Utils.isNullOrEmpty(d) &&
+                 !Utils.isNullOrEmpty(p) &&
+                 !Utils.isNullOrEmpty(q) &&
+                 !Utils.isNullOrEmpty(dp) &&
+                 !Utils.isNullOrEmpty(dq) &&
+                 !Utils.isNullOrEmpty(qi));
+     }
+
+    private boolean checkPublicKeyMembers() {
+        return (!Utils.isNullOrEmpty(n) && !Utils.isNullOrEmpty(e));
+    }
+
+    @Override
+    public void setProperties(Map<String, Object> props) {
+         for (Map.Entry<String, Object> entry : props.entrySet()) {
+            String key = entry.getKey();
+            Object val = entry.getValue();
+            if(key.equals("n")) {
+                n = (String) val;
+            } else if(key.equals("e")) {
+                e = (String) val;
+            } else if(key.equals("p")) {
+                p = (String) val;
+            } else if(key.equals("q")) {
+                q = (String) val;
+            } else if(key.equals("dp")) {
+                dp = (String) val;
+            } else if(key.equals("dq")) {
+                dq = (String) val;
+            }  else if(key.equals("qi")) {
+                qi = (String) val;
+            }  else if(key.equals("oth")) {
+                oth = (String) val;
+            } else {
+                super.setProperties(props);
             }
         }
     }
 
-    public RSAKey loadKey(Key key) {
-        this.key = key;
-        this.split();
-        return key;
-    }
-
-    public Key encryptionKey() {
-        if(this.key == null) {
-            deserialize();
+    @Override
+    /**
+     *
+     */
+    public java.security.Key getKey(Boolean isPrivate) throws ValueError {
+        try {
+            if(key == null) {
+                deserialize();
+            }
+            if(!isPrivate && isPrivateKey()) {
+                if(key instanceof RSAPrivateCrtKey) {
+                    RSAPrivateCrtKey privateKey = (RSAPrivateCrtKey) key;
+                    BigInteger n = privateKey.getModulus();
+                    BigInteger e = privateKey.getPublicExponent();
+                    RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(n, e);
+                    KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+                    return keyFactory.generatePublic(publicKeySpec);
+                }
+            }
+            if(isPrivate && !isPrivateKey())
+                throw new ValueError("Not a private key");
+            return key;
         }
-
-        return this.key;
+        catch(NoSuchAlgorithmException | InvalidKeySpecException | DeserializationNotPossible e) {
+            throw new ValueError(e.toString());
+        }
     }
 
-    private String longToBase64(Object item) {
+    private static PrivateKey getPemPrivateKey(String key, String algorithm) throws NoSuchAlgorithmException, InvalidKeySpecException {
+        String privKeyPEM = key.replace("-----BEGIN PRIVATE KEY-----\n", "");
+        privKeyPEM = privKeyPEM.replace("-----END PRIVATE KEY-----", "");
+        byte [] decoded = Base64.decodeBase64(privKeyPEM);
+        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
+        KeyFactory kf = KeyFactory.getInstance(algorithm);
+        return kf.generatePrivate(spec);
     }
 
-    public Map<String, String> serialize() {
-        return serialize(false);
+    private static PublicKey getPemPublicKey(String key, String algorithm) throws NoSuchAlgorithmException, InvalidKeySpecException {
+        String publicKeyPEM = key.replace("-----BEGIN PUBLIC KEY-----\n", "");
+        publicKeyPEM = publicKeyPEM.replace("-----END PUBLIC KEY-----", "");
+        byte [] decoded = Base64.decodeBase64(publicKeyPEM);
+        X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
+        KeyFactory kf = KeyFactory.getInstance(algorithm);
+        return kf.generatePublic(spec);
+
     }
 
-    private void split() {
-
+    private static byte[] getFileBytes(String filename) throws FileNotFoundException, IOException {
+        File f = new File(filename);
+        FileInputStream fis = new FileInputStream(f);
+        DataInputStream dis = new DataInputStream(fis);
+        byte[] keyBytes = new byte[(int) f.length()];
+        dis.readFully(keyBytes);
+        dis.close();
+        return keyBytes;
     }
+
+    public static java.security.Key getPemRSAKey(String filename) throws FileNotFoundException, IOException, UnknownKeyType {
+        java.security.Key rsaKey = null;
+        try {
+            byte[] keyBytes = RSAKey.getFileBytes(filename);
+            String temp = new String(keyBytes);
+            if(temp.indexOf("-----BEGIN PUBLIC KEY-----\n") >= 0) {
+                rsaKey = getPemPublicKey(temp, "RSA");
+
+            } else if(temp.indexOf("-----BEGIN PRIVATE KEY-----\n") >= 0) {
+                rsaKey = getPemPrivateKey(temp, "RSA");
+            } else {
+                throw new UnknownKeyType("Unknown RSA key format");
+            }
+        } catch(InvalidKeySpecException e) {
+
+        } catch(NoSuchAlgorithmException e) {
+
+        }
+        return rsaKey;
+    }
+
+
 
 }
-*/
+

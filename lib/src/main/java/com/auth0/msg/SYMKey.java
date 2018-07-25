@@ -1,18 +1,18 @@
-/*
-package com.auth0.jwt.oicmsg;
 
-import com.auth0.jwt.exceptions.oicmsg_exceptions.JWKException;
+package com.auth0.msg;
+
+import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
+import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.crypto.spec.SecretKeySpec;
 import java.util.*;
 
 public class SYMKey extends Key{
 
     final private static Logger logger = LoggerFactory.getLogger(SYMKey.class);
-    protected static Set<String> members = new HashSet<>(Arrays.asList("kty", "alg", "use", "kid", "k"));
-    public static Set<String> publicMembers = new HashSet<>(Arrays.asList("kty", "alg", "use", "kid", "k"));
-    protected static Set<String> required = new HashSet<>(Arrays.asList("k", "kty"));
     private String k;
     private static Map<String,Integer> alg2Keylen = new HashMap<String,Integer>(){{
         put("A128KW", 16);
@@ -23,47 +23,99 @@ public class SYMKey extends Key{
         put("HS512", 64);
     }};
 
-    public SYMKey(String kty, String alg, String use, String kid, Key key, String x5c,
-                  String x5t, String x5u, String k, Map<String,String> args) {
-        super(kty, alg, use, kid, x5c, x5t, x5u, key, args);
-        this.k = k;
-
-        if(this.key == null) {
-            this.key = b64d(this.k.getBytes());
+    private  static Map<String, String> alg2HmacAlg = new HashMap<String, String>(){
+        {
+            put("HS256", "HmacSHA256");
+            put("HS384", "HmacSHA384");
+            put("HS512", "HmacSHA512");
         }
-    }
+    };
 
-    public void deserialize() {
-        this.key = b64d(this.k.getBytes());
-    }
-
-    public Map<String,String> serialize(boolean isPrivate) {
-        Map<String,String> args = common();
-        args.put("k", b64e(this.k.getBytes()).asUnicode());
-        return args;
-    }
-
-    public String encryptionKey(String alg) throws JWKException {
+    public SYMKey(String alg, String use, String kid, java.security.Key key, String[] x5c,
+                  String x5t, String x5u, String k, Map<String,String> args) throws ValueError{
+        super("oct", alg, use, kid, x5c, x5t, x5u, key, args);
+        members.add("k");
+        required.add("k");
+        if(Utils.isNullOrEmpty(alg))
+            this.alg = "HS256";
+        if(!alg2HmacAlg.containsKey(this.alg))
+            throw new ValueError("Invalid alg");
+        this.k = k;
         if(this.key == null) {
             deserialize();
         }
+    }
 
-        int size = alg2Keylen.get(alg);
+    public SYMKey(String use) throws ValueError{
+        this("", use, "", null, null, "", "", "", null);
+    }
 
-        String encryptedKey;
-        if(size <= 32) {
-            encryptedKey = sha256_digest(this.key).substring(0,size);
-        } else if (size <= 48) {
-            encryptedKey = sha384_digest(this.key).substring(0,size);
-        } else if (size <= 64) {
-            encryptedKey = sha512_digest(this.key).substring(0,size);
-        } else {
-            throw new JWKException("No support for symmetric keys > 512 bits");
+    /**
+     * Creates SymKey
+     * @param use sig or enc
+     * @param k base64urlencode key bytes
+     * @throws ValueError
+     */
+    public SYMKey(String use, String k) throws ValueError{
+        this("", use, "", null, null, "", "", k, null);
+    }
+
+
+    @Override
+    public void deserialize() {
+        if(key == null) {
+            byte[] secretBytes = Base64.decodeBase64(k);
+            key = new SecretKeySpec(secretBytes, alg2HmacAlg.get(alg));
         }
+    }
 
-        logger.debug(String.format("Symmetric encryption key: %s", as_unicode(b64e(encryptedKey)));
+    public Map<String,Object> serialize(boolean isPrivate) throws SerializationNotPossible{
+        Map<String,Object> args = common();
+        if(!Utils.isNullOrEmpty(k))
+            args.put("k", k);
+        else if(key != null) {
+            SecretKeySpec secretKeySpec = (SecretKeySpec) key;
+            byte[] secretBytes = secretKeySpec.getEncoded();
+            if(secretBytes == null)
+                throw new SerializationNotPossible();
+            args.put("k", Base64.encodeBase64URLSafeString(secretBytes));
+        }
+        return args;
+    }
 
-        return encryptedKey;
+    public java.security.Key encryptionKey() {
+        if(this.key == null) {
+            deserialize();
+        }
+      return key;
+    }
+
+    @Override
+    public boolean isPrivateKey() {
+        return true;
+    }
+
+    @Override
+    public boolean isPublicKey() {
+        return true;
+    }
+
+    @Override
+    public java.security.Key getKey(Boolean isPrivate) {
+        return key;
+    }
+
+    @Override
+    public void setProperties(Map<String, Object> props) {
+        for (Map.Entry<String, Object> entry : props.entrySet()) {
+            String key = entry.getKey();
+            Object val = entry.getValue();
+            if(key.equals("k")) {
+                k = (String) val;
+            } else {
+                super.setProperties(props);
+            }
+        }
     }
 }
-*/
+
