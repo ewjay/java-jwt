@@ -1,6 +1,7 @@
 
 package com.auth0.msg;
 
+import com.auth0.jwt.exceptions.oicmsg_exceptions.DeserializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
 import org.apache.commons.codec.binary.Base64;
@@ -32,7 +33,7 @@ public class SYMKey extends Key{
     };
 
     public SYMKey(String alg, String use, String kid, java.security.Key key, String[] x5c,
-                  String x5t, String x5u, String k, Map<String,String> args) throws ValueError{
+                  String x5t, String x5u, String k, Map<String,String> args) throws ValueError, DeserializationNotPossible{
         super("oct", alg, use, kid, x5c, x5t, x5u, key, args);
         members.add("k");
         required.add("k");
@@ -40,13 +41,13 @@ public class SYMKey extends Key{
             this.alg = "HS256";
         if(!alg2HmacAlg.containsKey(this.alg))
             throw new ValueError("Invalid alg");
-        this.k = k;
+        this.k = Utils.isNullOrEmpty(k) ? "" : k;
         if(this.key == null) {
             deserialize();
         }
     }
 
-    public SYMKey(String use) throws ValueError{
+    public SYMKey(String use) throws ValueError, DeserializationNotPossible {
         this("", use, "", null, null, "", "", "", null);
     }
 
@@ -56,14 +57,16 @@ public class SYMKey extends Key{
      * @param k base64urlencode key bytes
      * @throws ValueError
      */
-    public SYMKey(String use, String k) throws ValueError{
+    public SYMKey(String use, String k) throws ValueError, DeserializationNotPossible{
         this("", use, "", null, null, "", "", k, null);
     }
 
 
     @Override
-    public void deserialize() {
+    public void deserialize() throws DeserializationNotPossible {
         if(key == null) {
+            if(Utils.isNullOrEmpty(k))
+                throw new DeserializationNotPossible();
             byte[] secretBytes = Base64.decodeBase64(k);
             key = new SecretKeySpec(secretBytes, alg2HmacAlg.get(alg));
         }
@@ -83,7 +86,7 @@ public class SYMKey extends Key{
         return args;
     }
 
-    public java.security.Key encryptionKey() {
+    public java.security.Key encryptionKey() throws DeserializationNotPossible {
         if(this.key == null) {
             deserialize();
         }
@@ -105,13 +108,14 @@ public class SYMKey extends Key{
         return key;
     }
 
+
     @Override
     public void setProperties(Map<String, Object> props) {
         for (Map.Entry<String, Object> entry : props.entrySet()) {
             String key = entry.getKey();
             Object val = entry.getValue();
             if(key.equals("k")) {
-                k = (String) val;
+                k = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             } else {
                 super.setProperties(props);
             }

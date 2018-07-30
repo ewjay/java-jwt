@@ -6,17 +6,14 @@ import com.auth0.jwt.exceptions.oicmsg_exceptions.JWKException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.UnknownKeyType;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
-import org.bouncycastle.jce.provider.PEMUtil;
-import org.bouncycastle.util.io.pem.PemObject;
-import org.bouncycastle.util.io.pem.PemReader;
+import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.commons.codec.binary.Base64;
+
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.KeyFactory;
@@ -26,7 +23,11 @@ import java.security.PublicKey;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.*;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.RSAPrivateCrtKeySpec;
+import java.security.spec.RSAPublicKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -80,11 +81,13 @@ public class RSAKey extends Key {
     }
 
     public RSAKey(String use) throws JWKException {
-        this("", use, "", null, "", "", null, "", "", "", "", "", "", "", "", "", null);
+        this("", use, "", null, "", "", null, "", "",
+            "", "", "", "", "", "", "", null);
     }
 
     public RSAKey(java.security.Key key) throws JWKException {
-        this("", "", "", null, "", "", key, "", "", "", "", "", "", "", "", "", null);
+        this("", "", "", null, "", "", key, "", "", "",
+            "", "", "", "", "", "", null);
     }
 
     @Override
@@ -108,7 +111,8 @@ public class RSAKey extends Key {
                     BigInteger dq = Utils.base64urlToBigInt(this.dq);
                     BigInteger qi = Utils.base64urlToBigInt(this.qi);
 
-                    RSAPrivateCrtKeySpec privSpec = new RSAPrivateCrtKeySpec(n, e, d, p, q, dp, dq, qi);
+                    RSAPrivateCrtKeySpec privSpec =
+                        new RSAPrivateCrtKeySpec(n, e, d, p, q, dp, dq, qi);
                     KeyFactory factory = KeyFactory.getInstance("RSA");
                     this.key = factory.generatePrivate(privSpec);
 
@@ -246,21 +250,21 @@ public class RSAKey extends Key {
             String key = entry.getKey();
             Object val = entry.getValue();
             if(key.equals("n")) {
-                n = (String) val;
+                n = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             } else if(key.equals("e")) {
-                e = (String) val;
+                e = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             } else if(key.equals("p")) {
-                p = (String) val;
+                p = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             } else if(key.equals("q")) {
-                q = (String) val;
+                q = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             } else if(key.equals("dp")) {
-                dp = (String) val;
+                dp = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             } else if(key.equals("dq")) {
-                dq = (String) val;
+                dq = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             }  else if(key.equals("qi")) {
-                qi = (String) val;
+                qi = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             }  else if(key.equals("oth")) {
-                oth = (String) val;
+                oth = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             } else {
                 super.setProperties(props);
             }
@@ -295,7 +299,8 @@ public class RSAKey extends Key {
         }
     }
 
-    private static PrivateKey getPemPrivateKey(String key, String algorithm) throws NoSuchAlgorithmException, InvalidKeySpecException {
+    private static PrivateKey getPemPrivateKey(String key, String algorithm)
+        throws NoSuchAlgorithmException, InvalidKeySpecException {
         String privKeyPEM = key.replace("-----BEGIN PRIVATE KEY-----\n", "");
         privKeyPEM = privKeyPEM.replace("-----END PRIVATE KEY-----", "");
         byte [] decoded = Base64.decodeBase64(privKeyPEM);
@@ -304,7 +309,8 @@ public class RSAKey extends Key {
         return kf.generatePrivate(spec);
     }
 
-    private static PublicKey getPemPublicKey(String key, String algorithm) throws NoSuchAlgorithmException, InvalidKeySpecException {
+    private static PublicKey getPemPublicKey(String key, String algorithm)
+        throws NoSuchAlgorithmException, InvalidKeySpecException {
         String publicKeyPEM = key.replace("-----BEGIN PUBLIC KEY-----\n", "");
         publicKeyPEM = publicKeyPEM.replace("-----END PUBLIC KEY-----", "");
         byte [] decoded = Base64.decodeBase64(publicKeyPEM);
@@ -324,7 +330,8 @@ public class RSAKey extends Key {
         return keyBytes;
     }
 
-    public static java.security.Key getPemRSAKey(String filename) throws FileNotFoundException, IOException, UnknownKeyType {
+    public static java.security.Key getPemRSAKey(String filename)
+        throws FileNotFoundException, IOException, UnknownKeyType {
         java.security.Key rsaKey = null;
         try {
             byte[] keyBytes = RSAKey.getFileBytes(filename);

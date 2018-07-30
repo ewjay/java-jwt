@@ -1,5 +1,7 @@
 package com.auth0.msg;
 
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -16,7 +18,8 @@ public class KeyJarTest {
 
     private static final String PRIVATE_KEY_FILE = "src/test/resources/rsa-private.pem";
     private static final String PUBLIC_KEY_FILE = "src/test/resources/rsa-public.pem";
-    private static final String INVALID_PUBLIC_KEY_FILE = "src/test/resources/rsa-public_invalid.pem";
+    private static final String INVALID_PUBLIC_KEY_FILE =
+        "src/test/resources/rsa-public_invalid.pem";
     private static final String JSON_PUBLIC_KEY_FILE = "src/test/resources/jwk.json";
 
     @Rule
@@ -97,14 +100,16 @@ public class KeyJarTest {
         List<String> usage = new ArrayList<>();
         usage.add("ver");
         usage.add("sig");
-        KeyBundle keyBundle3 = KeyBundle.keyBundleFromLocalFile(PRIVATE_KEY_FILE, "der", usage);
+        KeyBundle keyBundle3 = KeyBundle.keyBundleFromLocalFile(
+            PRIVATE_KEY_FILE, "der", usage);
 
         KeyJar keyJar = new KeyJar();
         keyJar.addKeyBundle("", keyBundle1);
         keyJar.addKeyBundle("http://www.example.org", keyBundle2);
         keyJar.addKeyBundle("http://www.example.org", keyBundle3);
 
-        List<Key> ownerKeys = keyJar.getKeys("sig", "RSA", "http://www.example.org/", "", null);
+        List<Key> ownerKeys = keyJar.getKeys(
+            "sig", "RSA", "http://www.example.org/", "", null);
         Assert.assertNotNull(ownerKeys);
         Assert.assertEquals(ownerKeys.size(), 1);
     }
@@ -139,17 +144,43 @@ public class KeyJarTest {
         List<String> usage = new ArrayList<>();
         usage.add("ver");
         usage.add("sig");
-        KeyBundle keyBundle3 = KeyBundle.keyBundleFromLocalFile(PRIVATE_KEY_FILE, "der", usage);
+        KeyBundle keyBundle3 =
+            KeyBundle.keyBundleFromLocalFile(PRIVATE_KEY_FILE, "der", usage);
 
         KeyJar keyJar = new KeyJar();
         keyJar.addKeyBundle("", keyBundle1);
         keyJar.addKeyBundle("http://www.example.org/", keyBundle2);
         keyJar.addKeyBundle("http://www.example.org/", keyBundle3);
 
-        List<Key> ownerKeys = keyJar.getKeys("sig", "RSA", "http://www.example.org", "", null);
+        List<Key> ownerKeys = keyJar.getKeys(
+            "sig", "RSA", "http://www.example.org", "", null);
         Assert.assertNotNull(ownerKeys);
         Assert.assertEquals(ownerKeys.size(), 1);
     }
+
+    @Test
+    public void testMissingSlash2() throws Exception {
+        JSONParser jsonParser = new JSONParser();
+        String json = "[{" +
+            "\"kty\": \"oct\"," +
+            "\"k\": \"a1b2c3d4\"," +
+            "\"use\": \"sig\"" +
+            "}," +
+            "{" +
+            "\"kty\": \"oct\"," +
+            "\"k\": \"a1b2c3d4\"," +
+            "\"use\": \"ver\"" +
+            "}" +
+            "]";
+        Object jsonObject = jsonParser.parse(json);
+        List<Map<String, Object>> list = (List<Map<String, Object>>)jsonObject;
+        KeyBundle keyBundle1 = new KeyBundle(list);
+
+
+    }
+
+
+
 
     @Ignore
     public void testGetEnc() throws Exception {
@@ -166,11 +197,13 @@ public class KeyJarTest {
     public void testDumpIssuerKeys() throws Exception {
         List<String> usage = new ArrayList<>();
         usage.add("sig");
-        KeyBundle keyBundle = KeyBundle.keyBundleFromLocalFile(JSON_PUBLIC_KEY_FILE, "jwks", usage);
+        KeyBundle keyBundle =
+            KeyBundle.keyBundleFromLocalFile(JSON_PUBLIC_KEY_FILE, "jwks", usage);
         KeyJar keyJar = new KeyJar();
         keyJar.addKeyBundle("", keyBundle);
 
-        Map<String, List<Map<String, Object>>> keysJwks = keyJar.exportsJwks(false, "");
+        Map<String, List<Map<String, Object>>> keysJwks =
+            keyJar.exportsJwks(false, "");
         Assert.assertNotNull(keysJwks);
         List<Map<String, Object>> keys = keysJwks.get("keys");
         Assert.assertEquals(keys.size(), 1);

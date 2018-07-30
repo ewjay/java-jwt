@@ -82,8 +82,9 @@ public class KeyBundle {
      * @param keyUsage
      * @throws ImportException
      */
-    public KeyBundle(List<Map<String, Object>> keys, String source, long cacheTime, boolean verifySSL,
-                     String fileFormat, String keyType, List<String> keyUsage) throws ImportException {
+    public KeyBundle(List<Map<String, Object>> keys, String source, long cacheTime,
+                     boolean verifySSL,String fileFormat, String keyType, List<String> keyUsage)
+        throws ImportException {
         this.keys = new ArrayList<Key>();
         this.cacheTime = cacheTime == 0 ? 300000 : cacheTime;
         this.verifySSL = verifySSL;
@@ -106,7 +107,8 @@ public class KeyBundle {
                 this.source = source;
                 this.remote = true;
             } else {
-                if (new HashSet<String>(Arrays.asList("rsa", "der", "jwks")).contains(fileFormat.toLowerCase())) {
+                if (new HashSet<String>(Arrays.asList("rsa", "der", "jwks")).contains(
+                    fileFormat.toLowerCase())) {
                     File file = new File(source);
                     if (file.exists() && file.isFile()) {
                         this.source = source;
@@ -148,7 +150,8 @@ public class KeyBundle {
         this(keyList, "", 0, true, "jwk", "", null);
     }
 
-    public KeyBundle(List<Map<String, Object>> keyList, String keyType, List<String> usage) throws ImportException {
+    public KeyBundle(List<Map<String, Object>> keyList, String keyType, List<String> usage)
+        throws ImportException {
         this(keyList, "", 0, true, "jwk", keyType, usage);
     }
 
@@ -195,15 +198,14 @@ public class KeyBundle {
                         String qi = (String) key.get("qi");
                         String oth = (String) key.get("oth");
 
-                        keyInstance = new RSAKey(alg, use, kid, x5c,x5t, x5u, null, n, e, d, p, q, dp, dq, qi, oth, null);
+                        keyInstance = new RSAKey(alg, use, kid, x5c,x5t, x5u, null,
+                            n, e, d, p, q, dp, dq, qi, oth, null);
                     } else if("EC".equals(keyType)) {
                         String x = (String) key.get("x");
                         String y = (String) key.get("y");
                         String d = (String) key.get("d");
-                        continue;
-                        //TODO
-//                        keyInstance = new ECKey(use);
-
+                        String curve = (String) key.get("crv");
+                        keyInstance = new ECKey(alg, use, kid, null, curve, x, y, d, null);
                     } else if("oct".equals(keyType)) {
                         String k = (String) key.get("k");
                         keyInstance = new SYMKey(alg, use, kid, null, x5c, x5t, x5u, k, null);
@@ -211,7 +213,7 @@ public class KeyBundle {
                         continue;
                     this.keys.add(keyInstance);
                 }
-                catch(Exception e) {
+                catch(Exception | SerializationNotPossible e) {
                     System.out.println(e.toString());
                 }
             }
@@ -366,7 +368,8 @@ public class KeyBundle {
         return true;
     }
 
-    private JSONObject parseRemoteResponse(HttpResponse response) throws IOException, ParseException {
+    private JSONObject parseRemoteResponse(HttpResponse response)
+        throws IOException, ParseException {
         Header header = response.getFirstHeader("Content-Type");
         if(header == null || !header.getValue().contains("application/json"))
             logger.warn("Wrong content-type");
@@ -596,7 +599,8 @@ public class KeyBundle {
     }
 
 
-    public static KeyBundle keyBundleFromLocalFile(String filename, String type, List<String> usage) throws ImportException, UnknownKeyType {
+    public static KeyBundle keyBundleFromLocalFile(String filename, String type, List<String> usage)
+        throws ImportException, UnknownKeyType {
         usage = harmonizeUsage(usage);
         KeyBundle keyBundle;
         type = type.toLowerCase();

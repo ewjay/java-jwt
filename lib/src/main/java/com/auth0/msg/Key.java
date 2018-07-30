@@ -4,19 +4,21 @@ package com.auth0.msg;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.DeserializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.HeaderError;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.StringUtils;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.lang.String;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.interfaces.RSAPrivateCrtKey;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import java.util.*;
-import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Basic JSON Web key class. Jason Web keys are described in
@@ -38,22 +40,24 @@ public abstract class Key {
     protected long inactiveSince;
     protected Map<String, String> args;
     protected Set<String> longs = new HashSet<String>();
-    protected Set<String> members = new HashSet<String>(Arrays.asList("kty", "alg", "use", "kid", "x5c", "x5t", "x5u"));
-    protected Set<String> publicMembers = new HashSet<String>(Arrays.asList("kty", "alg", "use", "kid", "x5c", "x5t", "x5u"));
+    protected Set<String> members = new HashSet<String>
+        (Arrays.asList("kty", "alg", "use", "kid", "x5c", "x5t", "x5u"));
+    protected Set<String> publicMembers = new HashSet<String>
+        (Arrays.asList("kty", "alg", "use", "kid", "x5c", "x5t", "x5u"));
     protected Set<String> required = new HashSet<String>(Arrays.asList("kty"));
 
     public Key(String kty, String alg, String use, String kid, String[] x5c, String x5t,
                String x5u, java.security.Key key, Map<String, String> args) {
-        this.kty = kty;
-        this.alg = alg;
-        this.use = use;
-        this.kid = kid;
+        this.kty = Utils.isNullOrEmpty(kty) ? "" : kty;
+        this.alg = Utils.isNullOrEmpty(alg) ? "" : alg;
+        this.use = Utils.isNullOrEmpty(use) ? "" : use;
+        this.kid = Utils.isNullOrEmpty(kid) ? "" : kid;
         if(x5c != null)
             this.x5c = x5c;
         else
             this.x5c = new String[0];
-        this.x5t = x5t;
-        this.x5u = x5u;
+        this.x5t = Utils.isNullOrEmpty(x5t) ? "" : x5t;
+        this.x5u = Utils.isNullOrEmpty(x5u) ? "" : x5u;
         this.inactiveSince = 0;
         this.key = key;
         this.args = args;
@@ -68,7 +72,10 @@ public abstract class Key {
     }
 
     public void setX5c(String[] x5c) {
-        this.x5c = x5c;
+        if(x5c == null)
+            this.x5c = new String[0];
+        else
+            this.x5c = x5c;
     }
 
     public String getX5t() {
@@ -76,7 +83,7 @@ public abstract class Key {
     }
 
     public void setX5t(String x5t) {
-        this.x5t = x5t;
+        this.x5t = Utils.isNullOrEmpty(x5t) ? "" : x5t;
     }
 
     public String getX5u() {
@@ -84,7 +91,7 @@ public abstract class Key {
     }
 
     public void setX5u(String x5u) {
-        this.x5u = x5u;
+        this.x5u = Utils.isNullOrEmpty(x5u) ? "" : x5u;
     }
 
     public String getKty() {
@@ -92,7 +99,7 @@ public abstract class Key {
     }
 
     public void setKty(String kty) {
-        this.kty = kty;
+        this.kty = Utils.isNullOrEmpty(kty) ? "" : kty;
     }
 
     public String getAlg() {
@@ -100,7 +107,7 @@ public abstract class Key {
     }
 
     public void setAlg(String alg) {
-        this.alg = alg;
+        this.alg = Utils.isNullOrEmpty(kty) ? "" : alg;
     }
 
     public String getUse() {
@@ -108,7 +115,7 @@ public abstract class Key {
     }
 
     public void setUse(String use) {
-        this.use = use;
+        this.use = Utils.isNullOrEmpty(use) ? "" :use;
     }
 
     public String getKid() {
@@ -116,7 +123,7 @@ public abstract class Key {
     }
 
     public void setKid(String kid) {
-        this.kid = kid;
+        this.kid = Utils.isNullOrEmpty(kid) ? "" :kid;
     }
 
     public void setInactiveSince() {
@@ -165,42 +172,29 @@ public abstract class Key {
         return this.toDict().toString();
     }
 
-    /*
-            this.kty = kty;
-        this.alg = alg;
-        this.use = use;
-        this.kid = kid;
-        if(x5c != null)
-            this.x5c = x5c;
-        else
-            this.x5c = new String[0];
-        this.x5t = x5t;
-        this.x5u = x5u;
-        this.inactiveSince = 0;
-        this.key = key;
-        this.args = args;
-
-     */
     public void setProperties(Map<String, Object> props) {
         for (Map.Entry<String, Object> entry : props.entrySet()) {
             String key = entry.getKey();
             Object val = entry.getValue();
             if(key.equals("kty")) {
-                kty = (String) val;
+                kty =  Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             } else if(key.equals("alg")) {
-                alg = (String) val;
+                alg = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             } else if(key.equals("use")) {
-                use = (String) val;
+                use = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             } else if(key.equals("kid")) {
-                kid = (String) val;
+                kid = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             } else if(key.equals("x5t")) {
-                x5t = (String) val;
+                x5t = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             } else if(key.equals("x5u")) {
-                x5u = (String) val;
+                x5u = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             } else if(key.equals("x5c")) {
-                x5c = (String[]) val;
+                if(x5c == null)
+                    x5c = new String[0];
+                else
+                    x5c = (String[]) val;
             } else {
-                args.put(key, (String) val);
+                args.put(key, Utils.isNullOrEmpty((String) val) ? "" : (String) val );
             }
         }
     }
@@ -341,7 +335,8 @@ public abstract class Key {
      * @return String base64urlencoded string of thumbprint hash
      * @throws NoSuchAlgorithmException SerializationNotPossible
      */
-    public String thumbprint(String hashFunction) throws NoSuchAlgorithmException, SerializationNotPossible {
+    public String thumbprint(String hashFunction)
+        throws NoSuchAlgorithmException, SerializationNotPossible {
         return Base64.encodeBase64URLSafeString(thumbprint(hashFunction, null));
     }
 
@@ -377,7 +372,8 @@ public abstract class Key {
      * @return Map of object and internal values
      */
 
-    public abstract Map<String, Object> serialize(boolean isPrivate) throws SerializationNotPossible;
+    public abstract Map<String, Object> serialize(boolean isPrivate)
+        throws SerializationNotPossible;
 
 
     /**
