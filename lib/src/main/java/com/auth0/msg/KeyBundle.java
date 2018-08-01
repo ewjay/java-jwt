@@ -183,7 +183,7 @@ public class KeyBundle {
                 try {
                     String alg = (String) key.get("alg");
                     String kid = (String) key.get("kid");
-                    String[] x5c = (String[]) key.get("x5c");
+                    String[] x5c = (String[]) ((List<String>)key.get("x5c")).toArray(new String[0]);
                     String x5t= (String) key.get("x5t");
                     String x5u = (String) key.get("x5u");
 
