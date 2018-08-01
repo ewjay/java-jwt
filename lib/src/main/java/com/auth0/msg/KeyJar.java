@@ -1,15 +1,21 @@
 
 package com.auth0.msg;
 
+import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ImportException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.TypeError;
+import com.auth0.jwt.interfaces.Claim;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.auth0.jwt.interfaces.Payload;
 import org.apache.commons.codec.binary.Base64;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.junit.Assert;
 import org.slf4j.LoggerFactory;
+
+import javax.rmi.CORBA.Util;
 import java.security.KeyException;
 import java.util.*;
 import java.util.logging.Logger;
@@ -130,59 +136,63 @@ public class KeyJar {
             return new ArrayList<>();
         }
 
-        List<Key> keyListReturned = new ArrayList<>();
-        List<Key> keyList = new ArrayList<>();
+        List<Key> keyListToReturn = new ArrayList<>();
         for(KeyBundle keyBundle : keyBundleList) {
+            List<Key> tempKeyList1 = new ArrayList<>();
             if(!Utils.isNullOrEmpty(keyType)) {
-                keyList = keyBundle.get(keyType);
+                tempKeyList1 = keyBundle.get(keyType);
             } else {
-                keyList = keyBundle.getKeys();
+                tempKeyList1 = keyBundle.getKeys();
             }
 
-            for(Key key : keyList) {
-                if(key.getInactiveSince() == 0 && !keyUse.equals("sig")) {
+            for(Key key : tempKeyList1) {
+                if(key.getInactiveSince() != 0 && !"sig".equals(keyUse)) {
                     continue;
                 }
-                if(key.getUse() != null || use.equals(key.getUse())) {
-                    if(kid != null) {
+                if(Utils.isNullOrEmpty(key.getUse()) || use.equals(key.getUse())) {
+                    if(!Utils.isNullOrEmpty(kid))  {
                         if(kid.equals(key.getKid())) {
-                            keyListReturned.add(key);
+                            keyListToReturn.add(key);
                             break;
                         } else
                             continue;
                     } else {
-                        keyListReturned.add(key);
+                        keyListToReturn.add(key);
                     }
                 }
             }
         }
 
         // if elliptic curve have to check I have a key of the right curve
-        String name;
-        if(keyType.equals("EC") && args.containsKey("alg")) {
-            name = "P-" + args.get("alg").substring(2);
-            List<Key> tempKeyList = new ArrayList<>();
-            for(Key key : keyList) {
-                ECKey ecKey = (ECKey) key;
-                if(!name.equals(ecKey.getCrv()))
-                    continue;
-                else
-                    tempKeyList.add(key);
+        if("EC".equals(keyType) && args.containsKey("alg")) {
+            String name = "P-" + args.get("alg").substring(2);
+            List<Key> tempKeyList2 = new ArrayList<>();
+            List<Key> keyList = new ArrayList<>();
+            for(Key key : keyListToReturn) {
+                if(key instanceof ECKey) {
+                    ECKey ecKey = (ECKey) key;
+                    if (!name.equals(ecKey.getCrv()))
+                        continue;
+                    else
+                        tempKeyList2.add(key);
+                }
             }
-            keyList = tempKeyList;
+            keyListToReturn = tempKeyList2;
         }
 
-        if(use.equals("enc") && keyType.equals("oct") && !Utils.isNullOrEmpty(owner)) {
+        if("enc".equals(use) && "oct".equals(keyType) && !Utils.isNullOrEmpty(owner)) {
             for(KeyBundle keyBundle : this.issuerKeys.get("")) {
                 for(Key key : keyBundle.get(keyType)) {
-                    if(key.getUse() == null || key.getUse().equals(use)) {
-                        keyList.add(key);
+                    if(key.getInactiveSince() != 0)
+                        continue;
+                    if(Utils.isNullOrEmpty(key.getUse())  || use.equals(key.getUse())) {
+                        keyListToReturn.add(key);
                     }
                 }
             }
         }
 
-        return keyList;
+        return keyListToReturn;
     }
 
     public List<Key> getSigningKey(String keyType, String owner, String kid, Map<String,String> args) {
@@ -260,7 +270,7 @@ public class KeyJar {
         throw new KeyException(String.format("No keys for %s", url));
     }
 
-    public void loadKeys(Map<String,Object> pcr, String issuer, boolean shouldReplace) {
+    public void loadKeys(Map<String,Object> pcr, String issuer, boolean shouldReplace) throws ImportException, KeyException {
         logger.debug("loading keys for issuer: " + issuer);
 
         if(shouldReplace || !this.issuerKeys.keySet().contains(issuer)) {
@@ -268,6 +278,7 @@ public class KeyJar {
         }
         String jwksUri = (String) pcr.get("jwks_uri");
         if(!Utils.isNullOrEmpty(jwksUri)) {
+            addUrl(issuer, jwksUri, null);
 
         } else {
             Object jwks = (String) pcr.get("jwks");
@@ -326,8 +337,8 @@ public class KeyJar {
             List<Object> keysList = (List<Object>) jwks.get("keys");
             if(!keysList.isEmpty()) {
                 if(keysList.get(0) instanceof Map) {
-                    List<Map<String, Object>> keysMap = (List<Map<String, Object>>) keysList.get(0);
-                    addKeyBundle(issuer, new KeyBundle(keysMap, "", 0, verifySSL, "jwk", "", null));
+                    List<Map<String, Object>> k2 = (List<Map<String, Object>>)jwks.get("keys");
+                    addKeyBundle(issuer, new KeyBundle(k2, "", 0, verifySSL, "jwk", "", null));
                 }
             }
         }
@@ -367,7 +378,7 @@ public class KeyJar {
 
 //        logger.debug("Key set summary for " + owner + " : " + keySummary(this, owner));
 
-        if(kid != null) {
+        if(!Utils.isNullOrEmpty(kid)) {
             for(Key key : this.getKeys(use, owner, kid, keyType, null)) {
                 if(key != null && !keys.contains(key)) {
                     keys.add(key);
@@ -398,18 +409,68 @@ public class KeyJar {
         return keys;
     }
 
-//    public void getJwtVerifyKeys(JWT jwt, Map<String,String> args) {
-//        List<Key> keyList = new ArrayList<>();
-//        JWTParser converter = new JWTParser();
-//        String keyType = algorithmToKeytypeForJWS(converter.parseHeader(jwttoString().getHeader().getAlgorithm().getName());
-//        String kid = jwt.getHeader().;
-//        String nki = args.get("no_kid_issuer");
-//
-//    }
+    public void getJWTVerifyKeys(String jwtString, String issuer, Map<String, List<String>> noKidIssuers, boolean allowMissingKid, boolean trustJKU) {
+        DecodedJWT jwt = JWT.decode(jwtString);
+        String alg = jwt.getAlgorithm();
+        String keyType = alg2KeyType(alg);
+        String kid = Utils.isNullOrEmpty(jwt.getKeyId()) ? "" : jwt.getKeyId();
+        Map<String, List<String>> nki = null;
+        if(noKidIssuers == null)
+            nki = new HashMap<>();
+        else
+            nki = noKidIssuers;
+        List<Key> keys = getKeys("sig", keyType, "", "", null);
+        String iss = Utils.isNullOrEmpty(jwt.getIssuer()) ? "" : jwt.getIssuer();
+        if(!Utils.isNullOrEmpty(iss)) {
+            addKey(keys, iss, "sig", keyType, kid, nki, allowMissingKid);
+        }
+        // First extend the keyjar if allowed
+        String jku = jwt.getHeaderClaim("jku").asString();
+        if(!Utils.isNullOrEmpty(jku) && !Utils.isNullOrEmpty(iss)) {
+            if(find(jku, iss) == null) {
+                if(trustJKU) {
+                    try {
+                        addUrl(iss, jku, null);
+                    } catch(ImportException | KeyException e) {
 
-    public void getJWTVerifyKeys(String jwt, Map<String, Object> args) {
+                    }
+                }
+            }
+        }
 
+        String[] claimsList = new String[] {"aud", "client_id"};
+        for(String claim : claimsList) {
+            Claim payloadClaim = jwt.getClaim(claim);
+            if(payloadClaim == null)
+                continue;
+            if(claim.equals("aud")) {
+                List<String> audList = null;
+                if(payloadClaim.asString() != null) {
+                    audList = new ArrayList<>();
+                    audList.add(payloadClaim.asString());
+                } else if(payloadClaim.asList(String.class) != null) {
+                    audList = payloadClaim.asList(String.class);
+                }
+                if(audList != null) {
+                    for(String aud: audList) {
+                        addKey(keys, aud, "sig", keyType, kid, nki, allowMissingKid);
+                    }
+               }
+            } else {
+                keys = addKey(keys, payloadClaim.asString(), "sig", keyType, kid, nki, allowMissingKid);
+            }
+        }
+
+        // Only want the public keys. Symmetric keys are also OK.
+        List<Key> returnKeys = new ArrayList<>();
+        for(Key key : keys) {
+            if(key.isPublicKey()) {
+                returnKeys.add(key);
+            }
+        }
     }
+
+
 
     public KeyJar copy() throws ImportException {
         KeyJar keyJar = new KeyJar();
@@ -422,13 +483,50 @@ public class KeyJar {
     }
 
     public static KeyJar buildKeyJar(Map<String, Object> keyConf, String kidTemplate, KeyJar keyJar, Map<String, Object> kidd) {
+        try {
+            if(keyJar == null )
+                keyJar = new KeyJar();
 
-        return null;
+            if(kidd == null) {
+                kidd = new HashMap<>();
+                kidd.put("sig", new HashMap<>());
+                kidd.put("enc", new HashMap<>());
+            }
+
+            int kid = 0;
+            Map<String, Object> jwks = new HashMap<>();
+            jwks.put("keys", new ArrayList());
+            for(Map.Entry<String, Object> spec : keyConf.entrySet()) {
+                String name = spec.getKey();
+                String val = (String) spec.getValue();
+
+            }
+
+
+
+        } catch (ImportException e) {
+
+        }
+        return keyJar;
     }
 
     public static KeyJar initKeyJar(String publicPath, String privatePath, String keyDefs, String issuer) {
 
         return null;
+    }
+
+    private String alg2KeyType(String alg) {
+        if(Utils.isNullOrEmpty(alg) || alg.toLowerCase().equals("none")) {
+            return "none";
+        } else if(alg.startsWith("RS") || alg.startsWith("PS")) {
+            return "RSA";
+        } else if(alg.startsWith("HS") || alg.startsWith("A")) {
+            return "oct";
+        } else if(alg.startsWith("ES") || alg.startsWith("ECDH-ES")) {
+            return "EC";
+        } else {
+            return "";
+        }
     }
 }
 
