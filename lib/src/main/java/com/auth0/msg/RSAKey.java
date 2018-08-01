@@ -7,19 +7,27 @@ import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.UnknownKeyType;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
 import org.apache.commons.codec.binary.Base64;
+import org.bouncycastle.jcajce.provider.asymmetric.RSA;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.nio.charset.Charset;
+import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -28,7 +36,9 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPrivateCrtKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 
@@ -69,7 +79,7 @@ public class RSAKey extends Key {
         boolean hasX509CertChain = this.x5c != null && this.x5c.length > 0;
 
         if (this.key != null ) {
-            _serializeRSAKey(this.key);
+            serializeRSAKey(this.key);
         } else if (hasPublicKeyParts) {
             deserialize();
         } else if (hasX509CertChain) {
@@ -126,6 +136,38 @@ public class RSAKey extends Key {
 
                 if(x5c != null && x5c.length > 0) {
                     // TODO handle certs
+                    List<X509Certificate> certChain = new ArrayList<>();
+                    for(String cert : x5c) {
+                        try {
+                            certChain.add(RSAKey.parseX509Certificate(cert));
+                        }
+                        catch (GeneralSecurityException e) {
+                            System.out.println(e.toString());
+                        }
+                    }
+                    if(!Utils.isNullOrEmpty(x5t)) {
+                        try {
+                            String calculatedX5t = RSAKey.getX5tForCert(x5c[0]);
+                            if(!x5t.equals(calculatedX5t)) {
+                                throw new DeserializationNotPossible(
+                                    "The thumbprint 'x5t' does not match the certificate.");
+                            }
+                        } catch(GeneralSecurityException e) {
+                            throw new DeserializationNotPossible("Unable to calculate x5t");
+                        }
+                    }
+                    if(certChain.size() > 0) {
+                        if(key != null) {
+                            if(!key.equals(certChain.get(0).getPublicKey())) {
+                                throw new DeserializationNotPossible(
+                                    "key described by components and key in x5c not equal");
+                            }
+
+                        } else {
+                            key = certChain.get(0).getPublicKey();
+                        }
+                        serializeRSAKey(key);
+                    }
                 }
             }
             if(key == null)
@@ -153,7 +195,7 @@ public class RSAKey extends Key {
         Map<String, Object> args = common();
         if(isPrivate) {
             if(!checkPrivateKeyMembers()) {
-                _serializeRSAKey(key);
+                serializeRSAKey(key);
             }
             if(!checkPrivateKeyMembers())
                 throw new SerializationNotPossible();
@@ -168,7 +210,7 @@ public class RSAKey extends Key {
 
         } else {
             if(!checkPublicKeyMembers())
-                _serializeRSAKey(key);
+                serializeRSAKey(key);
             if(!checkPublicKeyMembers())
                 throw new SerializationNotPossible();
             args.put("n", n);
@@ -197,8 +239,8 @@ public class RSAKey extends Key {
     }
 
 
-    private void _serializeRSAKey(java.security.Key key) {
-        if(key instanceof RSAPrivateCrtKey) {
+    private void serializeRSAKey(java.security.Key key) {
+        if(key != null && key instanceof RSAPrivateCrtKey) {
             RSAPrivateCrtKey privateKey = (RSAPrivateCrtKey) key;
             n = Utils.bigIntToBase64url(privateKey.getModulus());
             e = Utils.bigIntToBase64url(privateKey.getPublicExponent());
@@ -352,7 +394,35 @@ public class RSAKey extends Key {
         return rsaKey;
     }
 
+     public static X509Certificate parseX509Certificate(String cert)
+        throws GeneralSecurityException {
+        try {
+            String wrappedCert = "-----BEGIN CERTIFICATE-----\n" + cert + "\n-----END CERTIFICATE-----\n";
+            CertificateFactory f = CertificateFactory.getInstance("X.509");
+            X509Certificate certificate = (X509Certificate)f.generateCertificate(
+                new ByteArrayInputStream(wrappedCert.getBytes("UTF-8")));
+            return certificate;
+        } catch (UnsupportedEncodingException e) {
+            throw new GeneralSecurityException(e);
+        }
+    }
 
+    /**
+     * Gets the base64encoded SHA-1 thumbprint of the X509 certificate string
+     * @param certificate X509 certificate
+     * @return base64encoded SHA-1 thumbprint
+     */
+    public static String getX5tForCert(String certificate) throws GeneralSecurityException{
+        try {
+            byte[] decodedBytes = Base64.decodeBase64(certificate.getBytes("UTF-8"));
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            md.reset();
+            md.update(decodedBytes);
+            return new String(Base64.encodeBase64URLSafe(md.digest()), Charset.forName("UTF-8"));
+        } catch(UnsupportedEncodingException | NoSuchAlgorithmException e) {
+            throw new GeneralSecurityException(e);
+        }
+    }
 
 }
 
