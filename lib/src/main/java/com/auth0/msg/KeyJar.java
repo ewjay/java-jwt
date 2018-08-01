@@ -5,6 +5,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ImportException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.TypeError;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.Payload;
@@ -409,7 +410,7 @@ public class KeyJar {
         return keys;
     }
 
-    public void getJWTVerifyKeys(String jwtString, String issuer, Map<String, List<String>> noKidIssuers, boolean allowMissingKid, boolean trustJKU) {
+    public List<java.security.Key> getJWTVerifyKeys(String jwtString, String issuer, Map<String, List<String>> noKidIssuers, boolean allowMissingKid, boolean trustJKU) {
         DecodedJWT jwt = JWT.decode(jwtString);
         String alg = jwt.getAlgorithm();
         String keyType = alg2KeyType(alg);
@@ -462,12 +463,16 @@ public class KeyJar {
         }
 
         // Only want the public keys. Symmetric keys are also OK.
-        List<Key> returnKeys = new ArrayList<>();
+        List<java.security.Key> returnKeys = new ArrayList<>();
         for(Key key : keys) {
             if(key.isPublicKey()) {
-                returnKeys.add(key);
+                try {
+                    returnKeys.add(key.getKey(false));
+                } catch(ValueError e) {
+                }
             }
         }
+        return returnKeys;
     }
 
 
