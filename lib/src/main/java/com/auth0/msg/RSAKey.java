@@ -21,7 +21,10 @@ import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -33,6 +36,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.RSAKeyGenParameterSpec;
 import java.security.spec.RSAPrivateCrtKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
@@ -95,17 +99,15 @@ public class RSAKey extends Key {
             "", "", "", "", "", "", "", null);
     }
 
-    public RSAKey(java.security.Key key) throws JWKException {
-        this("", "", "", null, "", "", key, "", "", "",
+    public RSAKey(java.security.Key key, String use) throws JWKException {
+        this("", use, "", null, "", "", key, "", "", "",
             "", "", "", "", "", "", null);
     }
 
     @Override
     /**
      *  Based on a text based representation of an RSA key this method
-     *  instantiates a
-     *  RSAPrivateKey or
-     *  RSAPublicKey instance
+     *  instantiates a RSAPrivateKey or RSAPublicKey instance
      */
     public void deserialize() throws DeserializationNotPossible {
 
@@ -223,15 +225,32 @@ public class RSAKey extends Key {
         return args;
     }
 
+    /**
+     * Instantiates a RSAKey from a private/public key
+     * @param key
+     * @return
+     * @throws JWKException
+     */
     public static RSAKey loadKey(java.security.Key key) throws JWKException {
-         return new RSAKey(key);
+         return new RSAKey(key, "");
     }
 
+    /**
+     * Loads a RSAKey key from a PEM file
+     * @param file filename of private PEM file
+     * @return an RSAKey instance
+     * @throws Exception
+     */
     public static RSAKey load(String file) throws Exception{
-        RSAPrivateCrtKey key = (RSAPrivateCrtKey) getPemPrivateKey(file, "RSA");
+        RSAPrivateCrtKey key = (RSAPrivateCrtKey) getPemRSAKey(file);
         return loadKey(key);
     }
 
+    /**
+     * Gets the encryption key
+     * @return the encryption key, Could be null.
+     * @throws DeserializationNotPossible
+     */
     public java.security.Key encryptionKey() throws DeserializationNotPossible{
         if(this.key == null)
             deserialize();
@@ -239,6 +258,10 @@ public class RSAKey extends Key {
     }
 
 
+    /**
+     * Converts a public/private RSA key into internal components
+     * @param key a private or public key
+     */
     private void serializeRSAKey(java.security.Key key) {
         if(key != null && key instanceof RSAPrivateCrtKey) {
             RSAPrivateCrtKey privateKey = (RSAPrivateCrtKey) key;
@@ -271,6 +294,10 @@ public class RSAKey extends Key {
         return false;
     }
 
+    /**
+     * Checks if all private key components are available
+     * @return true/false
+     */
     private boolean checkPrivateKeyMembers() {
          return (!Utils.isNullOrEmpty(n) &&
                  !Utils.isNullOrEmpty(e) &&
@@ -280,8 +307,12 @@ public class RSAKey extends Key {
                  !Utils.isNullOrEmpty(dp) &&
                  !Utils.isNullOrEmpty(dq) &&
                  !Utils.isNullOrEmpty(qi));
-     }
+    }
 
+    /**
+     * Checks if all public key members are available
+     * @return true/false
+     */
     private boolean checkPublicKeyMembers() {
         return (!Utils.isNullOrEmpty(n) && !Utils.isNullOrEmpty(e));
     }
@@ -341,59 +372,57 @@ public class RSAKey extends Key {
         }
     }
 
-    private static PrivateKey getPemPrivateKey(String key, String algorithm)
-        throws NoSuchAlgorithmException, InvalidKeySpecException {
-        String privKeyPEM = key.replace("-----BEGIN PRIVATE KEY-----\n", "");
-        privKeyPEM = privKeyPEM.replace("-----END PRIVATE KEY-----", "");
-        byte [] decoded = Base64.decodeBase64(privKeyPEM);
-        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
-        KeyFactory kf = KeyFactory.getInstance(algorithm);
-        return kf.generatePrivate(spec);
-    }
+//    private static PrivateKey getPemPrivateKey(String key, String algorithm)
+//        throws NoSuchAlgorithmException, InvalidKeySpecException {
+//        String privKeyPEM = key.replace("-----BEGIN PRIVATE KEY-----\n", "");
+//        privKeyPEM = privKeyPEM.replace("-----END PRIVATE KEY-----", "");
+//        byte [] decoded = Base64.decodeBase64(privKeyPEM);
+//        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
+//        KeyFactory kf = KeyFactory.getInstance(algorithm);
+//        return kf.generatePrivate(spec);
+//    }
+//
+//    private static PublicKey getPemPublicKey(String key, String algorithm)
+//        throws NoSuchAlgorithmException, InvalidKeySpecException {
+//        String publicKeyPEM = key.replace("-----BEGIN PUBLIC KEY-----\n", "");
+//        publicKeyPEM = publicKeyPEM.replace("-----END PUBLIC KEY-----", "");
+//        byte [] decoded = Base64.decodeBase64(publicKeyPEM);
+//        X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
+//        KeyFactory kf = KeyFactory.getInstance(algorithm);
+//        return kf.generatePublic(spec);
+//
+//    }
+//
+//    private static byte[] getFileBytes(String filename) throws FileNotFoundException, IOException {
+//        File f = new File(filename);
+//        FileInputStream fis = new FileInputStream(f);
+//        DataInputStream dis = new DataInputStream(fis);
+//        byte[] keyBytes = new byte[(int) f.length()];
+//        dis.readFully(keyBytes);
+//        dis.close();
+//        return keyBytes;
+//    }
 
-    private static PublicKey getPemPublicKey(String key, String algorithm)
-        throws NoSuchAlgorithmException, InvalidKeySpecException {
-        String publicKeyPEM = key.replace("-----BEGIN PUBLIC KEY-----\n", "");
-        publicKeyPEM = publicKeyPEM.replace("-----END PUBLIC KEY-----", "");
-        byte [] decoded = Base64.decodeBase64(publicKeyPEM);
-        X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
-        KeyFactory kf = KeyFactory.getInstance(algorithm);
-        return kf.generatePublic(spec);
-
-    }
-
-    private static byte[] getFileBytes(String filename) throws FileNotFoundException, IOException {
-        File f = new File(filename);
-        FileInputStream fis = new FileInputStream(f);
-        DataInputStream dis = new DataInputStream(fis);
-        byte[] keyBytes = new byte[(int) f.length()];
-        dis.readFully(keyBytes);
-        dis.close();
-        return keyBytes;
-    }
-
-    public static java.security.Key getPemRSAKey(String filename)
-        throws FileNotFoundException, IOException, UnknownKeyType {
-        java.security.Key rsaKey = null;
+    /**
+     * Get the key from PEM encoded file
+     * @param filename filename of PEM file
+     * @return private or public key
+     */
+    public static java.security.Key getPemRSAKey(String filename) {
+        java.security.Key key = null;
         try {
-            byte[] keyBytes = RSAKey.getFileBytes(filename);
-            String temp = new String(keyBytes);
-            if(temp.indexOf("-----BEGIN PUBLIC KEY-----\n") >= 0) {
-                rsaKey = getPemPublicKey(temp, "RSA");
-
-            } else if(temp.indexOf("-----BEGIN PRIVATE KEY-----\n") >= 0) {
-                rsaKey = getPemPrivateKey(temp, "RSA");
-            } else {
-                throw new UnknownKeyType("Unknown RSA key format");
-            }
-        } catch(InvalidKeySpecException e) {
-
-        } catch(NoSuchAlgorithmException e) {
-
+            key = KeyUtils.readRSAKeyFromFile(filename);
+        } catch(IOException e) {
         }
-        return rsaKey;
+        return key;
     }
 
+    /**
+     * Parse an X509 certificate string and return the X509Certificate
+     * @param cert X509 Certificate String
+     * @return X509Certificate The certificate
+     * @throws GeneralSecurityException
+     */
      public static X509Certificate parseX509Certificate(String cert)
         throws GeneralSecurityException {
         try {
@@ -422,6 +451,24 @@ public class RSAKey extends Key {
         } catch(UnsupportedEncodingException | NoSuchAlgorithmException e) {
             throw new GeneralSecurityException(e);
         }
+    }
+
+    /**
+     * Generates a RSA Key pair
+     * @param size keysize
+     * @return KeyPair
+     */
+    public static KeyPair generateRSAKeyPair(int size) {
+        KeyPair keyPair = null;
+        try {
+            RSAKeyGenParameterSpec rsaKeyGenParameterSpec = new RSAKeyGenParameterSpec(size, RSAKeyGenParameterSpec.F4);
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+            keyPairGenerator.initialize(rsaKeyGenParameterSpec);
+            keyPair =  keyPairGenerator.generateKeyPair();
+        } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException e) {
+
+        }
+        return keyPair;
     }
 
 }

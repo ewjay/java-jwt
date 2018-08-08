@@ -1,7 +1,10 @@
 package com.auth0.msg;
 
+import com.auth0.jwt.exceptions.oicmsg_exceptions.ImportException;
+import com.fasterxml.jackson.core.JsonParser;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -16,6 +19,7 @@ import java.util.Map;
 
 public class KeyJarTest {
 
+    private static JSONParser jsonParser = new JSONParser();
     private static final String PRIVATE_KEY_FILE = "src/test/resources/rsa-private.pem";
     private static final String PUBLIC_KEY_FILE = "src/test/resources/rsa-public.pem";
     private static final String INVALID_PUBLIC_KEY_FILE =
@@ -119,6 +123,41 @@ public class KeyJarTest {
         "\"kid\": \"dEtpjbEvbhfgwUI-bdK5xAU_9UQ\", " +
         "\"issuer\": " +
         "\"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0/\"}]}";
+
+    private static final String JWKS_SPO = "{\"keys\":[" +
+        "{\"use\":\"sig\",\"crv\":\"P-256\",\"kty\":\"EC\",\"alg\":\"ES256\"," +
+        "\"y\":\"ac1h_DwyuUxhkrD9oKMJ-b_KuiVvvSARIwT-XoEmDXs\"," +
+        "\"x\":\"1XXUXq75gOPZ4bEj1o2Z5XKJWSs6LmL6fAOK3vyMzSc\"," +
+        "\"kid\":\"BfxfnahEtkRBG3Hojc9XGLGht_5rDBj49Wh3sBDVnzRpulMqYwMRmpizA0aSPT1fhCHYivTiaucWU" +
+        "qFu_GwTqA\"}," +
+        "{\"use\":\"sig\",\"crv\":\"P-256\",\"kty\":\"EC\",\"alg\":\"ES256\"," +
+        "\"y\":\"ycvkFMBIzgsowiaf6500YlG4vaMSK4OF7WVtQpUbEE0\"," +
+        "\"x\":\"2DfQoLpZS2j3hHEcHDkzV8ISx-RdLt6Opy8YZYVm4AQ\"," +
+        "\"kid\":\"91pD1H81rXUvrfg9mkngIG-tXjnldykKUVbITDIU1SgJvq91b8clOcJuEHNAq61eIvg8owpEvWcW" +
+        "AtlbV2awyA\"}," +
+        "{\"use\":\"sig\",\"e\":\"AQAB\",\"kty\":\"RSA\",\"alg\":\"RS256\"," +
+        "\"n\":\"yG9914Q1j63Os4jX5dBQbUfImGq4zsXJD4R59XNjGJlEt5ek6NoiDl0ucJO3_7_R9e5my2ONTSqZhtzF" +
+        "W6MImnIn8idWYzJzO2EhUPCHTvw_2oOGjeYTE2VltIyY_ogIxGwY66G0fVPRRH9tCxnkGOrIvmVgkhCCGkamqeXu" +
+        "Wvx9MCHL_gJbZJVwogPSRN_SjA1gDlvsyCdA6__CkgAFcSt1sGgiZ_4cQheKexxf1-7l8R91ZYetz53drk2FS3Sf" +
+        "uMZuwMM4KbXt6CifNhzh1Ye-5Tr_ZENXdAvuBRDzfy168xnk9m0JBtvul9GoVIqvCVECB4MPUb7zU6FTIcwRAw\"" +
+        ",\"kid\":\"0sIEl3MUJiCxrqleEBBF-_bZq5uClE84xp-wpt8oOI-WIeNxBjSR4ak_OTOmLdndB0EfDLtC7X1Jr" +
+        "nfZILJkxA\"}," +
+        "{\"use\":\"sig\",\"e\":\"AQAB\",\"kty\":\"RSA\",\"alg\":\"RS256\"," +
+        "\"n\":\"68be-nJp46VLj4Ci1V36IrVGYqkuBfYNyjQTZD_7yRYcERZebowOnwr3w0DoIQpl8iL2X8OXUo7rUW_" +
+        "LMzLxKx2hEmdJfUn4LL2QqA3KPgjYz8hZJQPG92O14w9IZ-8bdDUgXrg9216H09yq6ZvJrn5Nwvap3MXgECEzsZ" +
+        "6zQLRKdb_R96KFFgCiI3bEiZKvZJRA7hM2ePyTm15D9En_Wzzfn_JLMYgE_DlVpoKR1MsTinfACOlwwdO9U5Dm-" +
+        "5elapovILTyVTgjN75i-wsPU2TqzdHFKA-4hJNiWGrYPiihlAFbA2eUSXuEYFkX43ahoQNpeaf0mc17Jt5kp7pM" +
+        "2w\"," +
+        "\"kid\":\"zyDfdEU7pvH0xEROK156ik8G7vLO1MIL9TKyL631kSPtr9tnvs9XOIiq5jafK2hrGr2qqvJdejmoo" +
+        "nlGqWWZRA\"}," +
+        "{\"use\":\"sig\",\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"alg\":\"EdDSA\"," +
+        "\"x\":\"FnbcUAXZ4ySvrmdXK1MrDuiqlqTXvGdAaE4RWZjmFIQ\"," +
+        "\"kid\":\"q-H9y8iuh3BIKZBbK6S0mH_isBlJsk-u6VtZ5rAdBo5fCjjy3LnkrsoK_QWrlKB08j_PcvwpAMfTE" +
+        "DHw5spepw\"}," +
+        "{\"use\":\"sig\",\"crv\":\"Ed25519\",\"kty\":\"OKP\",\"alg\":\"EdDSA\"," +
+        "\"x\":\"CS01DGXDBPV9cFmd8tgFu3E7eHn1UcP7N1UCgd_JgZo\"," +
+        "\"kid\":\"bL33HthM3fWaYkY2_pDzUd7a65FV2R2LHAKCOsye8eNmAPDgRgpHWPYpWFVmeaujUUEXRyDLHN-Up" +
+        "4QH_sFcmw\"}]}";
 
     @Rule
     public ExpectedException exception = ExpectedException.none();
@@ -258,7 +297,6 @@ public class KeyJarTest {
 
     @Test
     public void testMissingSlash2() throws Exception {
-        JSONParser jsonParser = new JSONParser();
         String json = "[{" +
             "\"kty\": \"oct\"," +
             "\"k\": \"a1b2c3d4\"," +
@@ -339,7 +377,6 @@ public class KeyJarTest {
 
     @Test
     public void testImportJwks() throws Exception {
-        JSONParser jsonParser = new JSONParser();
         Object json = jsonParser.parse(JWK1STRING);
         KeyJar keyJar = new KeyJar();
         keyJar.importJwks((Map<String, Object>)json, "");
@@ -350,7 +387,6 @@ public class KeyJarTest {
 
     @Test
     public void testGetSigningKeyUseUndefined() throws Exception {
-        JSONParser jsonParser = new JSONParser();
         Object json = jsonParser.parse(JWK1STRING);
         KeyJar keyJar = new KeyJar();
         keyJar.importJwks((Map<String, Object>)json, "");
@@ -365,11 +401,87 @@ public class KeyJarTest {
 
     @Test
     public void testJWK2() throws Exception {
-        JSONParser jsonParser = new JSONParser();
         Object json = jsonParser.parse(JWK2STRING);
         System.out.println(json);
         KeyJar keyJar = new KeyJar();
         keyJar.importJwks((Map<String, Object>)json, "");
 
     }
+
+    @Test
+    public void testBuildKeyJar() throws Exception {
+        String keyString = "[{\"type\":\"RSA\",\"use\":[\"enc\",\"sig\"]}," +
+            "{\"type\":\"EC\",\"crv\":\"P-256\",\"use\":[\"sig\"]}]";
+        List<Object> conf = (List<Object>)jsonParser.parse(keyString);
+        KeyJar keyJar = KeyJar.buildKeyJar(conf, "", null, null);
+        Assert.assertNotNull(keyJar);
+        List<KeyBundle> keyBundles = keyJar.getBundle("");
+        Assert.assertEquals(2, keyBundles.size());
+    }
+
+    @Test
+    public void testLoadMissingKeyParameter() throws ImportException, ParseException {
+        String jwk = "{\"keys\":[{\"e\":\"AQAB\",\"kty\":\"RSA\",\"kid\":\"rsa1\"}]}";
+        Object json = jsonParser.parse(jwk);
+        KeyJar keyJar = new KeyJar();
+        keyJar.importJwks((Map<String, Object>)json, "");
+        List<KeyBundle> keys = keyJar.getBundle("");
+        Assert.assertEquals(0, keys.get(0).getKeys().size());
+    }
+
+    @Test
+    public  void testLoadUnknownKeyType() throws ParseException, ImportException {
+        String jwk = "{\"keys\":[{\"n\":\"zkpUgEgXICI54blf6iWiD2RbMDCOO1jV0VSff1MFFnujM4othfMsad7" +
+            "H1kRo50YM5S_X9TdvrpdOfpz5aBaKFhT6Ziv0nhtcekq1eRl8mjBlvGKCE5XGk-0LFSDwvqgkJoFYInq7bu0" +
+            "a4JEzKs5AyJY75YlGh879k1Uu2Sv3ZZOunfV1O1Orta-NvS-aG_jN5cstVbCGWE20H0vFVrJKNx0Zf-u-aA-" +
+            "syM4uX7wdWgQ-owoEMHge0GmGgzso2lwOYf_4znanLwEuO3p5aabEaFoKNR4K6GjQcjBcYmDEE4CtfRU9AEm" +
+            "hcD1kleiTB9TjPWkgDmT9MXsGxBHf3AKT5w\"," +
+            "\"e\":\"AQAB\",\"kty\":\"RSA\",\"kid\":\"rsa1\"}," +
+            "{\"k\":\"YTEyZjBlMDgxMGI4YWU4Y2JjZDFiYTFlZTBjYzljNDU3YWM0ZWNiNzhmNmFlYTNkNTY0NzMzYjE" +
+            "\",\"kty\":\"buz\"}]}";
+
+        Object json = jsonParser.parse(jwk);
+        KeyJar keyJar = new KeyJar();
+        keyJar.importJwks((Map<String, Object>)json, "");
+
+        List<KeyBundle> keys = keyJar.getBundle("");
+        Assert.assertEquals(2, keys.get(0).getKeys().size());
+    }
+
+    @Test
+    public void testLoadSpomkyKeys() throws Exception{
+        Object json = jsonParser.parse(JWKS_SPO);
+        KeyJar keyJar = new KeyJar();
+        keyJar.importJwks((Map<String, Object>)json, "");
+
+        Assert.assertEquals(4, keyJar.getIssuerKeys("").size());
+    }
+
+
+    @Test
+    public void testGetEC() throws Exception{
+        Object json = jsonParser.parse(JWKS_SPO);
+        KeyJar keyJar = new KeyJar();
+        keyJar.importJwks((Map<String, Object>)json, "");
+        Map<String, String> args = new HashMap<>();
+        args.put("alg", "ES256");
+        List<Key> keys = keyJar.getKeys("sig", "EC", "", "", args);
+        Assert.assertEquals(2, keys.size());
+    }
+
+    @Test
+    public void testGetECWrongAlg() throws Exception{
+        Object json = jsonParser.parse(JWKS_SPO);
+        KeyJar keyJar = new KeyJar();
+        keyJar.importJwks((Map<String, Object>)json, "");
+        Map<String, String> args = new HashMap<>();
+        args.put("alg", "ES512");
+        List<Key> keys = keyJar.getKeys("sig", "EC", "", "", args);
+        Assert.assertEquals(0, keys.size());
+    }
+
+
+
+
+
 }

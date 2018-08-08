@@ -13,10 +13,16 @@ import org.bouncycastle.jce.provider.JCEECPrivateKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.rmi.CORBA.Util;
 import java.security.AlgorithmParameters;
 import java.security.GeneralSecurityException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
+import java.security.SecureRandom;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
@@ -48,7 +54,7 @@ public class ECKey extends Key{
         ECNamedCurveTable.getParameterSpec("secp521r1");
 
 
-    private static Set<String> longs = new HashSet<String>(Arrays.asList("x", "y", "d"));
+    private Set<String> longs = new HashSet<String>(Arrays.asList("x", "y", "d"));
 
     /**
      *
@@ -62,7 +68,7 @@ public class ECKey extends Key{
         NIST2SEC.put("P-256", "secp256r1");
         NIST2SEC.put("P-384", "secp384r1");
         NIST2SEC.put("P-521", "secp521r1");
-        NIST2SEC = new HashMap<String, String>();
+        SEC2NIST = new HashMap<String, String>();
         SEC2NIST.put("secp256r1", "P-256");
         SEC2NIST.put("secp394r1", "P-384");
         SEC2NIST.put("secp521r1", "P-521");
@@ -119,7 +125,7 @@ public class ECKey extends Key{
                 ECPoint publicPoint =
                     new ECPoint(Utils.base64urlToBigInt(x), Utils.base64urlToBigInt(y));
                 ECPublicKeySpec ecPublicKeySpec = new ECPublicKeySpec(publicPoint, ecParameterSpec);
-                key = keyFactory.generatePrivate(ecPublicKeySpec);
+                key = keyFactory.generatePublic(ecPublicKeySpec);
             }
 
         } catch(ValueError | GeneralSecurityException e) {
@@ -152,6 +158,7 @@ public class ECKey extends Key{
         return key;
     }
 
+    @Override
     /**
      * Go from a ECPrivateKey or ECPublicKey instance to a JWK representation.
      *
@@ -160,7 +167,7 @@ public class ECKey extends Key{
      * @throws SerializationNotPossible
      */
     public Map<String, Object> serialize(boolean isPrivate) throws SerializationNotPossible {
-        if(!Utils.isNullOrEmpty(crv)) {
+        if(Utils.isNullOrEmpty(crv)) {
             throw new SerializationNotPossible();
         }
         Map<String, Object> serializedObject = common();
@@ -282,6 +289,26 @@ public class ECKey extends Key{
 
     private boolean isValidCurve(String curve) {
         return NIST2SEC.containsKey(curve);
+    }
+
+    public static KeyPair generateECKeyPair(String curve) {
+        if(Utils.isNullOrEmpty(curve)) {
+            return null;
+        }
+        if(!NIST2SEC.containsKey(curve)) {
+            return null;
+        } else  {
+            curve = NIST2SEC.get(curve);
+        }
+        KeyPair keyPair = null;
+        try {
+            ECGenParameterSpec ecGenSpec = new ECGenParameterSpec(curve);
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("EC");
+            keyPairGenerator.initialize(ecGenSpec, new SecureRandom());
+            return keyPairGenerator.generateKeyPair();
+        } catch(InvalidAlgorithmParameterException | NoSuchAlgorithmException e) {
+        }
+        return null;
     }
 
 }

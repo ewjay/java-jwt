@@ -1,7 +1,9 @@
 
 package com.auth0.msg;
 
+import com.auth0.jwt.exceptions.oicmsg_exceptions.HeaderError;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ImportException;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.JWKException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.TypeError;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.UnknownKeyType;
@@ -21,15 +23,21 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -88,7 +96,7 @@ public class KeyBundle {
         this.keys = new ArrayList<Key>();
         this.cacheTime = cacheTime == 0 ? 300000 : cacheTime;
         this.verifySSL = verifySSL;
-        this.fileFormat = fileFormat.toLowerCase();
+        this.fileFormat = Utils.isNullOrEmpty(fileFormat) ? "" : fileFormat.toLowerCase();
         this.keyType = keyType;
         this.keyUsage = keyUsage;
         this.remote = false;
@@ -162,6 +170,11 @@ public class KeyBundle {
     public KeyBundle(String source, String fileFormat, List<String> usage) throws ImportException {
         this(null, source, 0, true, fileFormat, "RSA", usage);
     }
+
+    public KeyBundle(String keyType) throws ImportException {
+        this(null, "", 0, true, "", keyType, null);
+    }
+
 
     /**
      * Go from JWK description to binary keys
@@ -447,9 +460,8 @@ public class KeyBundle {
     public List<Key> get(String keyType) {
 
         this.upToDate();
-        List<String> types = Arrays.asList(keyType.toLowerCase(), keyType.toUpperCase());
-
         if (!Utils.isNullOrEmpty(keyType)) {
+            List<String> types = Arrays.asList(keyType.toLowerCase(), keyType.toUpperCase());
             List<Key> keys = new ArrayList<Key>();
             for (Key key : this.keys) {
                 if (types.contains(key.getKty())) {
@@ -481,9 +493,11 @@ public class KeyBundle {
     public void removeKeysByType(String keyType) {
         List<String> types = Arrays.asList(keyType.toLowerCase(), keyType.toUpperCase());
 
-        for (Key key : this.keys) {
-            if (!types.contains(key.getKty())) {
-                this.keys.remove(key);
+        Iterator<Key> it = keys.iterator();
+        while(it.hasNext()) {
+            Key key = it.next();
+            if(types.contains(key.getKty())) {
+                keys.remove(key);
             }
         }
     }
@@ -562,7 +576,7 @@ public class KeyBundle {
         key.setInactiveSince(System.currentTimeMillis());
     }
 
-    public void removeOutdated(float after, int when) throws TypeError {
+    public void removeOutdated(float after, int when){
         long now;
         if (when != 0) {
             now = when;
@@ -635,33 +649,104 @@ public class KeyBundle {
      * @param size
      * @param use
      */
-    public static void createStoreRSAKeyPair(String name, String path, int size, String use) {
+    public static java.security.PrivateKey createStoreRSAKeyPair(String name, String path, int size, String use) {
         // TODO
+
+        if(Utils.isNullOrEmpty(name)) {
+            name = "oidcmsg";
+        }
+        if(Utils.isNullOrEmpty(path)) {
+            path = ".";
+        }
+        if(!path.endsWith(File.separator)) {
+            path += File.separator;
+        }
+        File directory = new File(path);
+        if (! directory.exists()){
+            directory.mkdirs();
+        }
+        if(!Utils.isNullOrEmpty(use)) {
+            name += "_" + use;
+        }
+        KeyPair keyPair =  RSAKey.generateRSAKeyPair(size);
+        if(keyPair != null) {
+            try {
+                KeyUtils.writeRSAPemFile(path + name, keyPair.getPrivate());
+                KeyUtils.writeRSAPemFile(path + name + ".pub", keyPair.getPublic());
+            } catch(IOException e) {
+
+            }
+            return keyPair.getPrivate();
+        } else {
+            return null;
+        }
     }
 
     /**
      *
-     * Initiates a :py:class:`oidcmsg.keybundle.KeyBundle` instance
-     containing newly minted RSA keys according to a spec.
-
-     Example of specification::
-     {'name': 'myrsakey', 'path': 'keystore', 'size':2048,
-     'use': ['enc', 'sig'] }
-
-     Using the spec above 2 RSA keys would be minted, one for
-     encryption and one for signing.
-
-     :param spec:
-     :return: KeyBundle
-     * @return
+     * Initiates a KeyBundle instance
+     * containing newly minted RSA keys according to a spec.
+     * Example of specification::
+     * {'name': 'myrsakey', 'path': 'keystore', 'size':2048,
+     * 'use': ['enc', 'sig'] }
+     * Using the spec above 2 RSA keys would be minted, one for
+     * encryption and one for signing.
+     *
+     * @param spec configuration specification for the keybundle
+     * @return new Keybundle containing the new RSAKey
+     * @throws ImportException
      */
-    public static KeyBundle rsaInit() {
-        //TODO
-        return null;
+    public static KeyBundle rsaInit(Map<String, Object> spec) throws ImportException {
+        String name = (String) spec.get("name");
+        String path = (String) spec.get("path");
+        long size = spec.get("size") == null ? 2048 : ((Long) spec.get("size")).longValue();
 
+        KeyBundle kb = new KeyBundle("RSA");
+        List<String> usage = new ArrayList<>();
+        if(spec.get("use") != null) {
+            if(spec.get("use") instanceof List) {
+                usage.addAll((List) spec.get("use"));
+            } else if(spec.get("use") instanceof String) {
+                usage.add((String)spec.get("use"));
+            }
+        }
+        for(String use : harmonizeUsage(usage)) {
+            java.security.Key key = KeyBundle.createStoreRSAKeyPair(name, path, (int)size, use);
+            try {
+                kb.append(new RSAKey(key, use));
+            }catch (JWKException e) {
+
+            }
+        }
+        return kb;
     }
 
 
+    /**
+     * Creates a Keybundle with a newly generated EC key
+     * @param spec Key specifics of the form: {"type": "EC", "crv": "P-256", "use": ["sig"]}
+     * @return keybundle with the new EC key
+     */
+    public static KeyBundle ecInit(Map<String, Object> spec) {
+        List<String> usage = (List<String>) spec.get("use");
+        if(usage == null) {
+            usage = new ArrayList<>();
+        }
+        try {
+            KeyBundle kb = new KeyBundle((List<Map<String, Object>>)null, "EC", usage);
+            String curve = spec.get("crv") == null ? "P-256" : (String) spec.get("crv");
+            KeyPair keyPair = ECKey.generateECKeyPair(curve);
+            if(keyPair != null) {
+                for(String use : usage) {
+                    ECKey ecKey = new ECKey("", use, "", keyPair.getPrivate(), curve, "", "", "", null);
+                    kb.append(ecKey);
+                }
+                return kb;
+            }
+        } catch(ImportException | HeaderError | ValueError | SerializationNotPossible | JWKException  e) {
 
+        }
+        return null;
+    }
 }
 

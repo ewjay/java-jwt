@@ -60,7 +60,10 @@ public abstract class Key {
         this.x5u = Utils.isNullOrEmpty(x5u) ? "" : x5u;
         this.inactiveSince = 0;
         this.key = key;
-        this.args = args;
+        if(args != null)
+            this.args = args;
+        else
+            this.args = new HashMap<>();
     }
 
     public Key() {
@@ -320,7 +323,7 @@ public abstract class Key {
         for (String elem : membersArray) {
             if(ser.containsKey(elem)) {
                 // TODO check if ser.get(elem) is non-string e.g. array, Integer etc.
-                sb.append(String.format("%s:%s,", elem, ser.get(elem))).append(',');
+                sb.append(String.format("\"%s\":\"%s\",", elem, ser.get(elem)));
             }
         }
         sb.deleteCharAt(sb.length() -1).append('}');

@@ -110,6 +110,10 @@ public class KeyJar {
         issuerKeys.put(owner, kbList);
     }
 
+    public List<KeyBundle> getBundle(String owner) {
+        return  issuerKeys.get(owner);
+    }
+
     public List<Key> getKeys(String keyUse, String keyType, String owner, String kid, Map<String,String> args) {
         String use;
         if(keyUse.equals("dec") || keyUse.equals("enc")) {
@@ -487,7 +491,7 @@ public class KeyJar {
         return keyJar;
     }
 
-    public static KeyJar buildKeyJar(Map<String, Object> keyConf, String kidTemplate, KeyJar keyJar, Map<String, Object> kidd) {
+    public static KeyJar buildKeyJar(List<Object> keyConf, String kidTemplate, KeyJar keyJar, Map<String, Object> kidd) {
         try {
             if(keyJar == null )
                 keyJar = new KeyJar();
@@ -500,22 +504,66 @@ public class KeyJar {
 
             int kid = 0;
             Map<String, Object> jwks = new HashMap<>();
+            List<Object> keysList = new ArrayList<>();
             jwks.put("keys", new ArrayList());
-            for(Map.Entry<String, Object> spec : keyConf.entrySet()) {
-                String name = spec.getKey();
-                String val = (String) spec.getValue();
 
+            for(Object specConf : keyConf) {
+                Map<String, Object>  spec = (Map<String,Object>) specConf;
+                String type = spec.get("type") != null ? ((String)spec.get("type")).toUpperCase() : "";
+                KeyBundle kb = new KeyBundle();
+                if(type.equals("RSA")) {
+                    if(spec.get("key") != null) {
+                        try {
+                            kb = new KeyBundle(null, "file://" + (String) spec.get("key"), 0, true, "der", type, (List<String>) spec.get("use"));
+                        } catch(Exception e) {
+
+                        }
+                    } else {
+                        kb = KeyBundle.rsaInit(spec);
+                    }
+                } else if(type.equals("EC")) {
+                    kb = KeyBundle.ecInit(spec);
+                }
+                if(kb != null) {
+                    for(Key key : kb.getKeys()) {
+                        if(!Utils.isNullOrEmpty(kidTemplate)) {
+                            key.setKid(String.format(kidTemplate, kid++));
+                        } else {
+                            key.addKid();
+                        }
+                        Map<String, Object> usage = (Map<String, Object> )kidd.get(key.getUse());
+                        if(usage == null) {
+                            usage = new HashMap<>();
+                        }
+                        usage.put(key.getKty(), key.getKid());
+                        kidd.put(key.getUse(), usage);
+                    }
+
+                    for(Key k : kb.getKeys()) {
+                        if(!k.getKty().equals("oct")) {
+                            try {
+                                keysList.add(k.serialize());
+                            }catch(SerializationNotPossible e) {
+
+                            }
+                        }
+                    }
+                    jwks.put("keys", keysList);
+                    keyJar.addKeyBundle("", kb);
+                    System.out.println(jwks.toString());
+                    System.out.println(kidd.toString());
+                }
             }
-
-
-
         } catch (ImportException e) {
 
         }
+
+        // Python returns jwks, keyjar, kidd
         return keyJar;
     }
 
     public static KeyJar initKeyJar(String publicPath, String privatePath, String keyDefs, String issuer) {
+        // TODO
 
         return null;
     }

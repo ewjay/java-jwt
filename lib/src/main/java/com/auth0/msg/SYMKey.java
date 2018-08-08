@@ -29,6 +29,7 @@ public class SYMKey extends Key{
             put("HS256", "HmacSHA256");
             put("HS384", "HmacSHA384");
             put("HS512", "HmacSHA512");
+            put("", "HmacSHA512"); // for default
         }
     };
 
@@ -37,10 +38,12 @@ public class SYMKey extends Key{
         super("oct", alg, use, kid, x5c, x5t, x5u, key, args);
         members.add("k");
         required.add("k");
-        if(Utils.isNullOrEmpty(alg))
-            this.alg = "HS256";
-        if(!alg2HmacAlg.containsKey(this.alg))
-            throw new ValueError("Invalid alg");
+        if(Utils.isNullOrEmpty(alg)) {
+            this.alg = "";
+        } else {
+            if(!alg2HmacAlg.containsKey(this.alg))
+                throw new ValueError("Invalid alg");
+        }
         this.k = Utils.isNullOrEmpty(k) ? "" : k;
         if(this.key == null) {
             deserialize();
