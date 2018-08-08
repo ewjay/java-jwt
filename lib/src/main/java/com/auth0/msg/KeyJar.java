@@ -425,7 +425,7 @@ public class KeyJar {
         else
             nki = noKidIssuers;
         List<Key> keys = getKeys("sig", keyType, "", "", null);
-        String iss = Utils.isNullOrEmpty(jwt.getIssuer()) ? "" : jwt.getIssuer();
+        String iss = Utils.isNullOrEmpty(jwt.getIssuer()) ? issuer : jwt.getIssuer();
         if(!Utils.isNullOrEmpty(iss)) {
             addKey(keys, iss, "sig", keyType, kid, nki, allowMissingKid);
         }
