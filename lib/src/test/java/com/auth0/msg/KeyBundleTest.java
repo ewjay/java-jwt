@@ -351,8 +351,7 @@ public class KeyBundleTest {
         Assert.assertTrue(key instanceof  RSAKey);
     }
 
-    @Ignore
-    //TODO double check
+    @Test
     public void testOutdated() throws ParseException, ImportException, UnknownKeyType {
         String secretA = Base64.encodeBase64URLSafeString(
             "supersecret".getBytes(Charset.forName("UTF-8")));

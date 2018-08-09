@@ -570,7 +570,7 @@ public class KeyBundle {
         key.setInactiveSince(System.currentTimeMillis());
     }
 
-    public void removeOutdated(float after, int when){
+    public void removeOutdated(long after, long when){
         long now;
         if (when != 0) {
             now = when;

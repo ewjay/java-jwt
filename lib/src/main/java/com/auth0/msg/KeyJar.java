@@ -4,7 +4,6 @@ package com.auth0.msg;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ImportException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
-import com.auth0.jwt.exceptions.oicmsg_exceptions.TypeError;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
@@ -17,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.security.KeyException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,18 +24,18 @@ import java.util.Map;
 public class KeyJar {
 
     private boolean verifySSL;
-    private float removeAfter;
+    private long removeAfter;
     private Map<String,List<KeyBundle>> issuerKeys;
     final private static org.slf4j.Logger logger = LoggerFactory.getLogger(KeyJar.class);
 
-    public KeyJar(boolean verifySSL, int removeAfter) {
+    public KeyJar(boolean verifySSL, long removeAfter) {
         this.verifySSL = verifySSL;
         this.removeAfter = removeAfter;
         issuerKeys = new HashMap<String, List<KeyBundle>>();
     }
 
     public KeyJar() throws ImportException {
-        this(true, 3600);
+        this(true, 3600000);
     }
 
     public KeyBundle addUrl(String owner, String url, Map<String,String> args) throws KeyException, ImportException {
@@ -143,7 +143,7 @@ public class KeyJar {
 
         List<Key> keyListToReturn = new ArrayList<>();
         for(KeyBundle keyBundle : keyBundleList) {
-            List<Key> tempKeyList1 = new ArrayList<>();
+            List<Key> tempKeyList1;
             if(!Utils.isNullOrEmpty(keyType)) {
                 tempKeyList1 = keyBundle.get(keyType);
             } else {
@@ -293,6 +293,7 @@ public class KeyJar {
                     if(keys != null) {
                         try {
                             addKeyBundle(issuer, new KeyBundle(Arrays.asList(keys)));
+                            addKeyBundle(issuer, new KeyBundle(Collections.singletonList(keys)));
                         }
                         catch(ImportException e) {
                         }
@@ -355,7 +356,7 @@ public class KeyJar {
         importJwks(json, issuer);
     }
 
-    public void removeOutdated(int when) throws TypeError {
+    public void removeOutdated(long when)  {
         List<KeyBundle> keyBundleList;
         for(String owner : this.issuerKeys.keySet()) {
             keyBundleList = new ArrayList<>();
