@@ -8,18 +8,18 @@ import com.auth0.jwt.exceptions.oicmsg_exceptions.TypeError;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.auth0.jwt.interfaces.Payload;
 import org.apache.commons.codec.binary.Base64;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-import org.junit.Assert;
 import org.slf4j.LoggerFactory;
 
-import javax.rmi.CORBA.Util;
 import java.security.KeyException;
-import java.util.*;
-import java.util.logging.Logger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class KeyJar {
 
