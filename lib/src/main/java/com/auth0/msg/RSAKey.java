@@ -362,49 +362,14 @@ public class RSAKey extends Key {
         }
     }
 
-//    private static PrivateKey getPemPrivateKey(String key, String algorithm)
-//        throws NoSuchAlgorithmException, InvalidKeySpecException {
-//        String privKeyPEM = key.replace("-----BEGIN PRIVATE KEY-----\n", "");
-//        privKeyPEM = privKeyPEM.replace("-----END PRIVATE KEY-----", "");
-//        byte [] decoded = Base64.decodeBase64(privKeyPEM);
-//        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
-//        KeyFactory kf = KeyFactory.getInstance(algorithm);
-//        return kf.generatePrivate(spec);
-//    }
-//
-//    private static PublicKey getPemPublicKey(String key, String algorithm)
-//        throws NoSuchAlgorithmException, InvalidKeySpecException {
-//        String publicKeyPEM = key.replace("-----BEGIN PUBLIC KEY-----\n", "");
-//        publicKeyPEM = publicKeyPEM.replace("-----END PUBLIC KEY-----", "");
-//        byte [] decoded = Base64.decodeBase64(publicKeyPEM);
-//        X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
-//        KeyFactory kf = KeyFactory.getInstance(algorithm);
-//        return kf.generatePublic(spec);
-//
-//    }
-//
-//    private static byte[] getFileBytes(String filename) throws FileNotFoundException, IOException {
-//        File f = new File(filename);
-//        FileInputStream fis = new FileInputStream(f);
-//        DataInputStream dis = new DataInputStream(fis);
-//        byte[] keyBytes = new byte[(int) f.length()];
-//        dis.readFully(keyBytes);
-//        dis.close();
-//        return keyBytes;
-//    }
-
     /**
      * Get the key from PEM encoded file
-     * @param filename filename of PEM file
+     * @param filename filename of PEM encoded key file
      * @return private or public key
+     * @throws IOException
      */
-    public static java.security.Key getPemRSAKey(String filename) {
-        java.security.Key key = null;
-        try {
-            key = KeyUtils.readRSAKeyFromFile(filename);
-        } catch(IOException e) {
-        }
-        return key;
+    public static java.security.Key getPemRSAKey(String filename) throws IOException{
+        return KeyUtils.readRSAKeyFromFile(filename);
     }
 
     /**
