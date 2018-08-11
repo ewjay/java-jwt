@@ -23,6 +23,12 @@ import java.security.spec.X509EncodedKeySpec;
 
 public class KeyUtils {
 
+    /**
+     * Parses a PEM encoded file and returns the key contents
+     * @param pemFile
+     * @return key contents without wrappers
+     * @throws IOException
+     */
     private static byte[] parsePEMFile(File pemFile) throws IOException {
         if (!pemFile.isFile() || !pemFile.exists()) {
             throw new FileNotFoundException(String.format("The file '%s' doesn't exist.",
@@ -35,6 +41,12 @@ public class KeyUtils {
         return content;
     }
 
+    /**
+     * Get RSA public key from encoded bytes
+     * @param keyBytes encoded key bytes
+     * @param algorithm algorithm for key (RSA)
+     * @return the RSA public key instance
+     */
     private static PublicKey getRSAPublicKey(byte[] keyBytes, String algorithm) {
         PublicKey publicKey = null;
         try {
@@ -47,6 +59,12 @@ public class KeyUtils {
         return publicKey;
     }
 
+    /**
+     * Get the RSA private ky from encoded bytes
+     * @param keyBytes encoded key bytes
+     * @param algorithm algorithm for the key (RSA)
+     * @return the RSA private key instance
+     */
     private static PrivateKey getRSAPrivateKey(byte[] keyBytes, String algorithm) {
         PrivateKey privateKey = null;
         try {
