@@ -8,6 +8,7 @@ import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.UnknownKeyType;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.UpdateFailed;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
+import com.fasterxml.jackson.core.JsonParser;
 import com.google.common.collect.ImmutableMap;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
@@ -30,6 +31,7 @@ import java.security.KeyException;
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -86,7 +88,7 @@ public class KeyBundle {
      */
     public KeyBundle(List<Map<String, Object>> keys, String source, long cacheTime,
                      boolean verifySSL,String fileFormat, String keyType, List<String> keyUsage)
-        throws ImportException {
+        throws ImportException, IOException, JWKException, ValueError {
         this.keys = new ArrayList<Key>();
         this.cacheTime = cacheTime == 0 ? 300000 : cacheTime;
         this.verifySSL = verifySSL;
@@ -136,39 +138,43 @@ public class KeyBundle {
         }
     }
 
-    public String getSource() {
-        return source;
-    }
 
-    public KeyBundle() throws ImportException {
+    public KeyBundle() throws ImportException, IOException, JWKException, ValueError {
         this(null, "", 0, true, "jwk", "RSA", null);
     }
 
-    public KeyBundle(List<Map<String, Object>> keyList, String keyType) throws ImportException {
+    public KeyBundle(List<Map<String, Object>> keyList, String keyType) throws ImportException, IOException, JWKException, ValueError {
         this(keyList, "", 0, true, "jwk", keyType, null);
     }
 
-    public KeyBundle(List<Map<String, Object>> keyList) throws ImportException {
+    public KeyBundle(List<Map<String, Object>> keyList) throws ImportException, IOException, JWKException, ValueError {
         this(keyList, "", 0, true, "jwk", "", null);
     }
 
     public KeyBundle(List<Map<String, Object>> keyList, String keyType, List<String> usage)
-        throws ImportException {
+        throws ImportException, IOException, JWKException, ValueError {
         this(keyList, "", 0, true, "jwk", keyType, usage);
     }
 
-    public KeyBundle(String source, boolean verifySSL) throws ImportException {
+    public KeyBundle(String source, boolean verifySSL) throws ImportException, IOException, JWKException, ValueError {
         this(null, source, 0, verifySSL, "jwk", "RSA", null);
     }
 
-    public KeyBundle(String source, String fileFormat, List<String> usage) throws ImportException {
+    public KeyBundle(String source, String fileFormat, List<String> usage) throws ImportException, IOException, JWKException, ValueError {
         this(null, source, 0, true, fileFormat, "RSA", usage);
     }
 
-    public KeyBundle(String keyType) throws ImportException {
+    public KeyBundle(String keyType) throws ImportException, IOException, JWKException, ValueError {
         this(null, "", 0, true, "", keyType, null);
     }
 
+    public KeyBundle(String keyType, List<String> usage) throws ImportException, IOException, JWKException, ValueError {
+        this(null, "", 0, true, "", keyType, usage);
+    }
+
+    public String getSource() {
+        return source;
+    }
 
     /**
      * Go from JWK description to binary keys
@@ -257,54 +263,26 @@ public class KeyBundle {
         }
     }
 
-    public void doLocalDer(String fileName, String keyType, List<String> keyUsage) {
-        // TODO
-//        RSAKey rsaKey = rsaLoad(fileName);
-//
-//        if (!keyType.equalsIgnoreCase("rsa")) {
-//            throw new NotImplementedException();
-//        }
-//
-//        if (keyUsage.isEmpty()) {
-//            keyUsage = new ArrayList<String>() {{
-//                add("enc");
-//                add("sig");
-//            }};
-//        } else {
-//            keyUsage = harmonizeUsage(keyUsage);
-//        }
-//
-//        for (String use : keyUsage) {
-//            RSAKey key = new RSAKey().loadKey(rsaKey);
-//            key.setUse(use);
-//            this.keys.add(key);
-//        }
-//        this.lastUpdated = System.currentTimeMillis();
-        try {
-            if(!keyType.toLowerCase().equals("rsa")) {
-                throw new ValueError("Invalid key type");
-            }
-            if(keyUsage == null || keyUsage.size() == 0) {
-                keyUsage = new ArrayList<String>();
-                keyUsage.add("enc");
-                keyUsage.add("sig");
+    public void doLocalDer(String fileName, String keyType, List<String> keyUsage) throws ValueError, JWKException, IOException {
+        if(!keyType.toLowerCase().equals("rsa")) {
+            throw new ValueError("Invalid key type");
+        }
+        if(keyUsage == null || keyUsage.size() == 0) {
+            keyUsage = new ArrayList<String>();
+            keyUsage.add("enc");
+            keyUsage.add("sig");
 
-            } else {
-                keyUsage = harmonizeUsage(keyUsage);
-
-            }
-            for(String use : keyUsage) {
-                java.security.Key key = RSAKey.getPemRSAKey(fileName);
-                RSAKey rsaKey = RSAKey.loadKey(key);
-                rsaKey.setUse(use);
-                keys.add(rsaKey);
-            }
-            lastUpdated = System.currentTimeMillis();
-
-
-        } catch (Exception e) {
+        } else {
+            keyUsage = harmonizeUsage(keyUsage);
 
         }
+        for(String use : keyUsage) {
+            java.security.Key key = RSAKey.getPemRSAKey(fileName);
+            RSAKey rsaKey = RSAKey.loadKey(key);
+            rsaKey.setUse(use);
+            keys.add(rsaKey);
+        }
+        lastUpdated = System.currentTimeMillis();
     }
 
     public boolean doRemote() throws UpdateFailed, KeyException {
@@ -602,7 +580,7 @@ public class KeyBundle {
             }
             return keyBundle;
         }
-        catch (ImportException e) {
+        catch (ImportException | IOException | JWKException | ValueError e) {
 
         }
         return null;
@@ -610,7 +588,7 @@ public class KeyBundle {
 
 
     public static KeyBundle keyBundleFromLocalFile(String filename, String type, List<String> usage)
-        throws ImportException, UnknownKeyType {
+        throws ImportException, UnknownKeyType, IOException, JWKException, ValueError {
         usage = harmonizeUsage(usage);
         KeyBundle keyBundle;
         type = type.toLowerCase();
@@ -624,9 +602,23 @@ public class KeyBundle {
         return keyBundle;
     }
 
-    public void dumpJwks(List<KeyBundle> kbl, String target, boolean isPrivate) {
-        // TODO write keybundle to file
-        throw new UnsupportedOperationException();
+    public void dumpJwks(List<KeyBundle> keyBundleList, String filename, boolean isPrivate) {
+        List<Map<String, Object>> keys = new ArrayList<>();
+        for(KeyBundle keyBundle : keyBundleList) {
+            for(Key key : keyBundle.getKeys()) {
+                if(!"oct".equals(key.getKty()) && key.inactiveSince == 0) {
+                    try {
+                        keys.add(key.serialize(isPrivate));
+                    } catch(SerializationNotPossible e) {
+                    }
+                }
+            }
+        }
+        Map<String, Object> jsonKeys = new HashMap<>();
+        jsonKeys.put("keys", keys);
+
+        JSONObject jsonObject = new JSONObject(jsonKeys);
+        System.out.println(jsonObject.toJSONString());
     }
 
 
@@ -689,28 +681,32 @@ public class KeyBundle {
      * @param spec configuration specification for the keybundle
      * @return new Keybundle containing the new RSAKey
      * @throws ImportException
+     * @throws IOException
      */
-    public static KeyBundle rsaInit(Map<String, Object> spec) throws ImportException {
-        String name = (String) spec.get("name");
-        String path = (String) spec.get("path");
-        long size = spec.get("size") == null ? 2048 : ((Long) spec.get("size")).longValue();
+    public static KeyBundle rsaInit(Map<String, Object> spec) {
+        KeyBundle kb = null;
+        try {
+            String name = (String) spec.get("name");
+            String path = (String) spec.get("path");
+            long size = spec.get("size") == null ? 2048 : ((Long) spec.get("size")).longValue();
 
-        KeyBundle kb = new KeyBundle("RSA");
-        List<String> usage = new ArrayList<>();
-        if(spec.get("use") != null) {
-            if(spec.get("use") instanceof List) {
-                usage.addAll((List) spec.get("use"));
-            } else if(spec.get("use") instanceof String) {
-                usage.add((String)spec.get("use"));
+            kb = new KeyBundle("RSA");
+            List<String> usage = new ArrayList<>();
+            if(spec.get("use") != null) {
+                if(spec.get("use") instanceof List) {
+                    usage.addAll((List) spec.get("use"));
+                } else if(spec.get("use") instanceof String) {
+                    usage.add((String)spec.get("use"));
+                }
             }
-        }
-        for(String use : harmonizeUsage(usage)) {
-            java.security.Key key = KeyBundle.createStoreRSAKeyPair(name, path, (int)size, use);
-            try {
-                kb.append(new RSAKey(key, use));
-            }catch (JWKException e) {
+            for(String use : harmonizeUsage(usage)) {
+                java.security.Key key = KeyBundle.createStoreRSAKeyPair(name, path, (int)size, use);
+                if(key != null) {
+                    kb.append(new RSAKey(key, use));
+                }
+            }
+        } catch(ImportException | IOException | JWKException | ValueError e) {
 
-            }
         }
         return kb;
     }
@@ -727,7 +723,7 @@ public class KeyBundle {
             usage = new ArrayList<>();
         }
         try {
-            KeyBundle kb = new KeyBundle((List<Map<String, Object>>)null, "EC", usage);
+            KeyBundle kb = new KeyBundle("EC", usage);
             String curve = spec.get("crv") == null ? "P-256" : (String) spec.get("crv");
             KeyPair keyPair = ECKey.generateECKeyPair(curve);
             if(keyPair != null) {
@@ -737,7 +733,7 @@ public class KeyBundle {
                 }
                 return kb;
             }
-        } catch(ImportException | HeaderError | ValueError | SerializationNotPossible | JWKException  e) {
+        } catch(ImportException | HeaderError | ValueError | SerializationNotPossible | JWKException | IOException e) {
 
         }
         return null;

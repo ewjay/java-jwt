@@ -3,6 +3,7 @@ package com.auth0.msg;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ImportException;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.JWKException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
 import com.auth0.jwt.interfaces.Claim;
@@ -13,6 +14,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.security.KeyException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,6 +26,7 @@ import java.util.Map;
 public class KeyJar {
 
     private boolean verifySSL;
+
     private long removeAfter;
     private Map<String,List<KeyBundle>> issuerKeys;
     final private static org.slf4j.Logger logger = LoggerFactory.getLogger(KeyJar.class);
@@ -34,11 +37,11 @@ public class KeyJar {
         issuerKeys = new HashMap<String, List<KeyBundle>>();
     }
 
-    public KeyJar() throws ImportException {
+    public KeyJar() {
         this(true, 3600000);
     }
 
-    public KeyBundle addUrl(String owner, String url, Map<String,String> args) throws KeyException, ImportException {
+    public KeyBundle addUrl(String owner, String url, Map<String,String> args) throws KeyException, ImportException, IOException, JWKException, ValueError {
         if(url == null || url.isEmpty()) {
             throw new KeyException("No jwksUri");
         }
@@ -62,7 +65,7 @@ public class KeyJar {
      * @param usage list of uses for the key
      * @throws ImportException
      */
-    public void addSymmetricKey(String owner, byte[] k, List<String> usage) throws ImportException {
+    public void addSymmetricKey(String owner, byte[] k, List<String> usage) throws ImportException, IOException, JWKException, ValueError {
         if(!issuerKeys.containsKey(owner)) {
             issuerKeys.put(owner, new ArrayList<KeyBundle>());
         }
@@ -275,7 +278,7 @@ public class KeyJar {
         throw new KeyException(String.format("No keys for %s", url));
     }
 
-    public void loadKeys(Map<String,Object> pcr, String issuer, boolean shouldReplace) throws ImportException, KeyException {
+    public void loadKeys(Map<String,Object> pcr, String issuer, boolean shouldReplace) throws ImportException, KeyException, IOException, JWKException, ValueError {
         logger.debug("loading keys for issuer: " + issuer);
 
         if(shouldReplace || !this.issuerKeys.keySet().contains(issuer)) {
@@ -337,7 +340,7 @@ public class KeyJar {
         return json.toJSONString();
     }
 
-    public void importJwks(Map<String,Object> jwks, String issuer) throws ImportException {
+    public void importJwks(Map<String,Object> jwks, String issuer) throws ImportException, IOException, JWKException, ValueError {
         Object keysObj = jwks.get("keys");
         if(keysObj instanceof List) {
             List<Object> keysList = (List<Object>) jwks.get("keys");
@@ -350,7 +353,7 @@ public class KeyJar {
         }
     }
 
-    public void importJwksAsJson(String js, String issuer) throws ParseException, ImportException{
+    public void importJwksAsJson(String js, String issuer) throws ParseException, ImportException, IOException, JWKException, ValueError{
         JSONParser parser = new JSONParser();
         JSONObject json = (JSONObject) parser.parse(js);
         importJwks(json, issuer);
@@ -415,7 +418,7 @@ public class KeyJar {
         return keys;
     }
 
-    public List<java.security.Key> getJWTVerifyKeys(String jwtString, String issuer, Map<String, List<String>> noKidIssuers, boolean allowMissingKid, boolean trustJKU) {
+    public List<java.security.Key> getJWTVerifyKeys(String jwtString, String issuer, Map<String, List<String>> noKidIssuers, boolean allowMissingKid, boolean trustJKU) throws IOException, JWKException, ValueError {
         DecodedJWT jwt = JWT.decode(jwtString);
         String alg = jwt.getAlgorithm();
         String keyType = alg2KeyType(alg);
@@ -482,7 +485,7 @@ public class KeyJar {
 
 
 
-    public KeyJar copy() throws ImportException {
+    public KeyJar copy() {
         KeyJar keyJar = new KeyJar();
         for(String owner : this.issuerKeys.keySet()) {
             for(KeyBundle kb : issuerKeys.get(owner)) {
@@ -492,73 +495,82 @@ public class KeyJar {
         return keyJar;
     }
 
+    /**
+     * Build a keyjar given a configuration template of the type
+     *     Configuration of the type ::
+     *    keys = [
+     *    {"type": "RSA", "key": "cp_keys/key.pem", "use": ["enc", "sig"]},
+     *    {"type": "EC", "crv": "P-256", "use": ["sig"]},
+     *    {"type": "EC", "crv": "P-256", "use": ["enc"]}
+     *    ]
+     * @param keyConf A list of configuration objects
+     * @param kidTemplate string template for KIDs
+     * @param keyJar an existing keyjar if any
+     * @param kidd
+     * @return a new keyjar with keys generated according to the configuration
+     */
     public static KeyJar buildKeyJar(List<Object> keyConf, String kidTemplate, KeyJar keyJar, Map<String, Object> kidd) {
-        try {
-            if(keyJar == null )
-                keyJar = new KeyJar();
+        if(keyJar == null )
+            keyJar = new KeyJar();
 
-            if(kidd == null) {
-                kidd = new HashMap<>();
-                kidd.put("sig", new HashMap<>());
-                kidd.put("enc", new HashMap<>());
-            }
-
-            int kid = 0;
-            Map<String, Object> jwks = new HashMap<>();
-            List<Object> keysList = new ArrayList<>();
-            jwks.put("keys", new ArrayList());
-
-            for(Object specConf : keyConf) {
-                Map<String, Object>  spec = (Map<String,Object>) specConf;
-                String type = spec.get("type") != null ? ((String)spec.get("type")).toUpperCase() : "";
-                KeyBundle kb = new KeyBundle();
-                if(type.equals("RSA")) {
-                    if(spec.get("key") != null) {
-                        try {
-                            kb = new KeyBundle(null, "file://" + (String) spec.get("key"), 0, true, "der", type, (List<String>) spec.get("use"));
-                        } catch(Exception e) {
-
-                        }
-                    } else {
-                        kb = KeyBundle.rsaInit(spec);
-                    }
-                } else if(type.equals("EC")) {
-                    kb = KeyBundle.ecInit(spec);
-                }
-                if(kb != null) {
-                    for(Key key : kb.getKeys()) {
-                        if(!Utils.isNullOrEmpty(kidTemplate)) {
-                            key.setKid(String.format(kidTemplate, kid++));
-                        } else {
-                            key.addKid();
-                        }
-                        Map<String, Object> usage = (Map<String, Object> )kidd.get(key.getUse());
-                        if(usage == null) {
-                            usage = new HashMap<>();
-                        }
-                        usage.put(key.getKty(), key.getKid());
-                        kidd.put(key.getUse(), usage);
-                    }
-
-                    for(Key k : kb.getKeys()) {
-                        if(!k.getKty().equals("oct")) {
-                            try {
-                                keysList.add(k.serialize());
-                            }catch(SerializationNotPossible e) {
-
-                            }
-                        }
-                    }
-                    jwks.put("keys", keysList);
-                    keyJar.addKeyBundle("", kb);
-                    System.out.println(jwks.toString());
-                    System.out.println(kidd.toString());
-                }
-            }
-        } catch (ImportException e) {
-
+        if(kidd == null) {
+            kidd = new HashMap<>();
+            kidd.put("sig", new HashMap<>());
+            kidd.put("enc", new HashMap<>());
         }
 
+        int kid = 0;
+        Map<String, Object> jwks = new HashMap<>();
+        List<Object> keysList = new ArrayList<>();
+        jwks.put("keys", new ArrayList());
+
+        for(Object specConf : keyConf) {
+            Map<String, Object>  spec = (Map<String,Object>) specConf;
+            String type = spec.get("type") != null ? ((String)spec.get("type")).toUpperCase() : "";
+            KeyBundle kb = null;
+            if("RSA".equals(type)) {
+                if(spec.get("key") != null) {
+                    try {
+                        kb = new KeyBundle(null, "file://" + (String) spec.get("key"), 0, true, "der", type, (List<String>) spec.get("use"));
+                    } catch(Exception e) {
+                        kb = newRSAKey(spec);
+                    }
+                } else {
+                    kb = KeyBundle.rsaInit(spec);
+                }
+            } else if(type.equals("EC")) {
+                kb = KeyBundle.ecInit(spec);
+            }
+            if(kb != null) {
+                for(Key key : kb.getKeys()) {
+                    if(!Utils.isNullOrEmpty(kidTemplate)) {
+                        key.setKid(String.format(kidTemplate, kid++));
+                    } else {
+                        key.addKid();
+                    }
+                    Map<String, Object> usage = (Map<String, Object> )kidd.get(key.getUse());
+                    if(usage == null) {
+                        usage = new HashMap<>();
+                    }
+                    usage.put(key.getKty(), key.getKid());
+                    kidd.put(key.getUse(), usage);
+                }
+
+                for(Key k : kb.getKeys()) {
+                    if(!k.getKty().equals("oct")) {
+                        try {
+                            keysList.add(k.serialize());
+                        }catch(SerializationNotPossible e) {
+
+                        }
+                    }
+                }
+                jwks.put("keys", keysList);
+                keyJar.addKeyBundle("", kb);
+                System.out.println(jwks.toString());
+                System.out.println(kidd.toString());
+            }
+        }
         // Python returns jwks, keyjar, kidd
         return keyJar;
     }
@@ -582,5 +594,30 @@ public class KeyJar {
             return "";
         }
     }
+
+    private static KeyBundle newRSAKey(Map<String, Object> spec) {
+        if(spec.get("name") == null) {
+            if(spec.get("key") != null) {
+                String key = (String)spec.get("key");
+                int index = key.indexOf('/');
+                if(index != -1) {
+                    spec.put("path", key.substring(0, index -1));
+                    spec.put("name", key.substring(index + 1));
+                } else {
+                    spec.put("name", key);
+                }
+            }
+        }
+        return KeyBundle.rsaInit(spec);
+    }
+
+    public long getRemoveAfter() {
+        return removeAfter;
+    }
+
+    public void setRemoveAfter(long removeAfter) {
+        this.removeAfter = removeAfter;
+    }
+
 }
 

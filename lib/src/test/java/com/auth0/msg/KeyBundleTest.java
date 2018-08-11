@@ -2,6 +2,7 @@ package com.auth0.msg;
 
 import com.auth0.jwt.exceptions.oicmsg_exceptions.DeserializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ImportException;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.JWKException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.UnknownKeyType;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
@@ -18,6 +19,7 @@ import org.junit.Rule;
 import org.junit.rules.ExpectedException;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -77,7 +79,7 @@ public class KeyBundleTest {
 
 
     @Test
-    public void testSymKey() throws ParseException, ImportException {
+    public void testSymKey() throws ParseException, ImportException, IOException, JWKException, ValueError {
         String k = Base64.encodeBase64URLSafeString("supersecret".getBytes(Charset.forName("UTF-8")));
         String json = "[{\"kty\": \"oct\", \"k\": \"" +
             k +
@@ -91,7 +93,7 @@ public class KeyBundleTest {
     }
 
     @Test
-    public void testWith2SymKey() throws ParseException, ImportException {
+    public void testWith2SymKey() throws ParseException, ImportException, IOException, JWKException, ValueError  {
         String secretA = Base64.encodeBase64URLSafeString(
             "supersecret".getBytes(Charset.forName("UTF-8")));
 
@@ -110,7 +112,7 @@ public class KeyBundleTest {
     }
 
     @Test
-    public void testRemoveSym() throws ParseException, ImportException {
+    public void testRemoveSym() throws ParseException, ImportException, IOException, JWKException, ValueError  {
         String secretA = Base64.encodeBase64URLSafeString(
             "supersecret".getBytes(Charset.forName("UTF-8")));
 
@@ -129,7 +131,7 @@ public class KeyBundleTest {
     }
 
     @Test
-    public void testRemoveKeySym() throws ParseException, ImportException {
+    public void testRemoveKeySym() throws ParseException, ImportException, IOException, JWKException, ValueError  {
         String secretA = Base64.encodeBase64URLSafeString(
             "supersecret".getBytes(Charset.forName("UTF-8")));
 
@@ -175,13 +177,13 @@ public class KeyBundleTest {
     }
 
     @Test
-    public void testUnknownSource() throws ParseException, ImportException {
+    public void testUnknownSource() throws ParseException, ImportException, IOException, JWKException, ValueError  {
         exception.expect(ImportException.class);
         KeyBundle keyBundle = new KeyBundle("foobar", true);
     }
 
     @Test
-    public void testUnknownTypes() throws ParseException, ImportException {
+    public void testUnknownTypes() throws ParseException, ImportException, IOException, JWKException, ValueError  {
         String json = "[{\"kid\":\"q-H9y8iuh3BIKZBbK6S0mH_isBlJsk-u6VtZ5rAdBo5fCjjy3LnkrsoK_QWr" +
             "lKB08j_PcvwpAMfTEDHw5spepw\",\"use\":\"sig\",\"alg\":\"EdDSA\",\"kty\":\"OKP\"," +
             "\"crv\":\"Ed25519\",\"x\":\"FnbcUAXZ4ySvrmdXK1MrDuiqlqTXvGdAaE4RWZjmFIQ\"}]";
@@ -192,7 +194,7 @@ public class KeyBundleTest {
     }
 
     @Test
-    public void testRemoveRSA() throws ParseException, ImportException {
+    public void testRemoveRSA() throws ParseException {
         String json = "{\"use\": [\"enc\", \"sig\"], \"size\": 1024, " +
             "\"name\": \"rsa\", \"path\": \"keys\"}";
 
@@ -245,7 +247,7 @@ public class KeyBundleTest {
 
 
     @Test
-    public void testKeyBundleFromLocalDer()throws ParseException, ImportException, UnknownKeyType {
+    public void testKeyBundleFromLocalDer()throws ImportException, UnknownKeyType, IOException, JWKException, ValueError  {
         List<String> usage = new ArrayList<>();
         usage.add("enc");
         KeyBundle keyBundle = KeyBundle.keyBundleFromLocalFile(PRIVATE_KEY_FILE, "der", usage);
@@ -259,7 +261,7 @@ public class KeyBundleTest {
 
 
     @Test
-    public void testKeyBundleFromLocalDerUpdate()throws ParseException, ImportException,
+    public void testKeyBundleFromLocalDerUpdate()throws ImportException, IOException, JWKException, ValueError ,
         UnknownKeyType {
         List<String> usage = new ArrayList<>();
         usage.add("enc");
@@ -279,7 +281,7 @@ public class KeyBundleTest {
 
     @Test
     public void testCreateJwksSym()
-        throws ParseException, ImportException, SerializationNotPossible {
+        throws ParseException, ImportException, SerializationNotPossible, IOException, JWKException, ValueError  {
         String k = Base64.encodeBase64URLSafeString("supersecret".getBytes(Charset.forName("UTF-8")));
         String json = "[{\"kty\": \"oct\", \"k\": \"" +
             k +
@@ -301,7 +303,7 @@ public class KeyBundleTest {
     }
 
     @Test
-    public void testKeyBundleFromLocalJwksFile() throws ParseException, ImportException, UnknownKeyType {
+    public void testKeyBundleFromLocalJwksFile() throws ParseException, ImportException, UnknownKeyType, IOException, JWKException, ValueError  {
         List<String> usage = new ArrayList<>();
         usage.add("sig");
         KeyBundle keyBundle = KeyBundle.keyBundleFromLocalFile("file://" + JSON_PUBLIC_KEY_FILE, "jwks", usage);
@@ -310,7 +312,7 @@ public class KeyBundleTest {
 
 
     @Test
-    public void testKeyBundleFromLocalJwks() throws ParseException, ImportException, UnknownKeyType {
+    public void testKeyBundleFromLocalJwks() throws ParseException, ImportException, UnknownKeyType, IOException, JWKException, ValueError  {
         List<String> usage = new ArrayList<>();
         usage.add("sig");
         KeyBundle keyBundle = KeyBundle.keyBundleFromLocalFile(JSON_PUBLIC_KEY_FILE, "jwks", usage);
@@ -318,7 +320,7 @@ public class KeyBundleTest {
     }
 
     @Test
-    public void testUpdate() throws ParseException, ImportException {
+    public void testUpdate() throws ParseException, ImportException , IOException, JWKException, ValueError {
         String k = Base64.encodeBase64URLSafeString("supersecret".getBytes(Charset.forName("UTF-8")));
         String json = "[{\"kty\": \"oct\", \"k\": \"" +
             k +
@@ -336,7 +338,7 @@ public class KeyBundleTest {
     }
 
     @Test
-    public void testUpdateRSA() throws ParseException, ImportException, UnknownKeyType {
+    public void testUpdateRSA() throws ParseException, ImportException, UnknownKeyType, IOException, JWKException, ValueError  {
         List<String> usage = new ArrayList<>();
         usage.add("sig");
         KeyBundle keyBundle = KeyBundle.keyBundleFromLocalFile(PRIVATE_KEY_FILE, "der", usage);
@@ -352,7 +354,7 @@ public class KeyBundleTest {
     }
 
     @Test
-    public void testOutdated() throws ParseException, ImportException, UnknownKeyType {
+    public void testOutdated() throws ParseException, ImportException, IOException, JWKException, ValueError {
         String secretA = Base64.encodeBase64URLSafeString(
             "supersecret".getBytes(Charset.forName("UTF-8")));
 
@@ -373,13 +375,31 @@ public class KeyBundleTest {
         Assert.assertEquals(1, keyBundle.getLength());
     }
 
-    @Ignore
-    public void testDumpJwks() {
+    @Test
+    public void testDumpJwks() throws ParseException, ImportException, IOException, JWKException, ValueError  {
+        String json1 = "{\"use\": [\"enc\", \"sig\"], \"size\": 1024, " +
+            "\"name\": \"rsa\", \"path\": \"keys\"}";
+        Map<String, Object> jsonObject = (Map<String, Object>) jsonParser.parse(json1);
+        KeyBundle keyBundle1 = KeyBundle.rsaInit(jsonObject);
+        String secretA = Base64.encodeBase64URLSafeString(
+            "supersecret".getBytes(Charset.forName("UTF-8")));
+        String secretB = Base64.encodeBase64URLSafeString(
+            "secret".getBytes(Charset.forName("UTF-8")));
+        String json2 = "[{\"kty\": \"oct\", \"k\": \"" + secretA + "\", \"use\": \"sig\"}," +
+            "{\"kty\": \"oct\", \"k\": \"" + secretB + "\", \"use\": \"enc\"}]";
+
+        List<Map<String, Object>> jsonObject2 = (List<Map<String, Object>>) jsonParser.parse(json2);
+        KeyBundle keyBundle2 = new KeyBundle(jsonObject2);
+        List<KeyBundle> keyBundleList = new ArrayList<>();
+        keyBundleList.add(keyBundle1);
+        keyBundleList.add(keyBundle2);
+        keyBundle1.dumpJwks(keyBundleList, "", false);
+
 
     }
 
     @Test
-    public void testMarkAsInactive() throws ParseException, ImportException, UnknownKeyType {
+    public void testMarkAsInactive() throws ParseException, ImportException, IOException, JWKException, ValueError  {
         String secretA = Base64.encodeBase64URLSafeString(
             "supersecret".getBytes(Charset.forName("UTF-8")));
 
@@ -406,7 +426,7 @@ public class KeyBundleTest {
 
 
     @Test
-    public void testCopy() throws ParseException, ImportException, UnknownKeyType {
+    public void testCopy() throws ParseException, ImportException, IOException, JWKException, ValueError  {
         String secretA = Base64.encodeBase64URLSafeString(
             "supersecret".getBytes(Charset.forName("UTF-8")));
 
@@ -429,7 +449,7 @@ public class KeyBundleTest {
 
         KeyBundle kb = keyBundle.copy();
 
-        Assert.assertEquals(2, keyBundle.getLength());
-        Assert.assertEquals(1, keyBundle.getActiveKeys().size());
+        Assert.assertEquals(2, kb.getLength());
+        Assert.assertEquals(1, kb.getActiveKeys().size());
     }
 }

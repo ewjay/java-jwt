@@ -1,20 +1,28 @@
 package com.auth0.msg;
 
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ImportException;
-import com.fasterxml.jackson.core.JsonParser;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.JWKException;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
+import org.apache.commons.codec.binary.Base64;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
 import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.ExpectedException;
+
+import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 
 public class KeyJarTest {
@@ -25,6 +33,11 @@ public class KeyJarTest {
     private static final String INVALID_PUBLIC_KEY_FILE =
         "src/test/resources/rsa-public_invalid.pem";
     private static final String JSON_PUBLIC_KEY_FILE = "src/test/resources/jwk.json";
+    private static final String JWK0STRING = "{\"keys\": [" +
+        "{\"kty\": \"RSA\", \"e\": \"AQAB\", \"kid\": \"abc\"," +
+        "\"n\":\"wf-wiusGhA-gleZYQAOPQlNUIucPiqXdPVyieDqQbXXOPBe3nuggtVzeq7pVFH1dZz4dY2Q2LA5Da" +
+        "egvP8kRvoSB_87ds3dy3Rfym_GUSc5B0l1TgEobcyaep8jguRoHto6GWHfCfKqoUYZq4N8vh4LLMQwLR6zi6J" +
+        "tu82nB5k8\"}]}";
     private static final String JWK1STRING = "{\"keys\": [" +
         "{\"n\":\"zkpUgEgXICI54blf6iWiD2RbMDCOO1jV0VSff1MFFnujM4othfMsad7H1kRo50YM5S_X9TdvrpdOfpz" +
         "5aBaKFhT6Ziv0nhtcekq1eRl8mjBlvGKCE5XGk-0LFSDwvqgkJoFYInq7bu0a4JEzKs5AyJY75YlGh879k1Uu2Sv" +
@@ -170,9 +183,7 @@ public class KeyJarTest {
     @Test
     public void testKeyJarAdd() throws Exception {
         KeyJar keyJar = new KeyJar();
-        ArrayList<String> uses = new ArrayList<String>();
-        uses.add("ver");
-        uses.add("sig");
+        List<String> uses = Arrays.asList("ver", "sig");
         KeyBundle keyBundle = KeyBundle.keyBundleFromLocalFile(PRIVATE_KEY_FILE, "der", uses);
         keyJar.addKeyBundle("https://issuer.example.com", keyBundle);
         List<String> owners = keyJar.getOwners();
@@ -182,12 +193,9 @@ public class KeyJarTest {
     @Test
     public void testSetBundle() throws Exception {
         KeyJar keyJar = new KeyJar();
-        ArrayList<String> uses = new ArrayList<String>();
-        uses.add("ver");
-        uses.add("sig");
+        List<String> uses = Arrays.asList("ver", "sig");
         KeyBundle keyBundle = KeyBundle.keyBundleFromLocalFile(PRIVATE_KEY_FILE, "der", uses);
-        ArrayList<KeyBundle> kbList = new ArrayList<KeyBundle>();
-        kbList.add(keyBundle);
+        List<KeyBundle> kbList = Collections.singletonList(keyBundle);
         keyJar.setBundle("https://issuer.example.com", kbList);
         List<String> owners = keyJar.getOwners();
         Assert.assertEquals(owners.get(0), "https://issuer.example.com");
@@ -197,8 +205,7 @@ public class KeyJarTest {
     @Test
     public void testAddSymmetric() throws Exception {
         KeyJar keyJar = new KeyJar();
-        ArrayList<String> uses = new ArrayList<String>();
-        uses.add("sig");
+        List<String> uses = Collections.singletonList("sig");
         keyJar.addSymmetricKey("", "client_secret".getBytes(), uses);
         List<String> owners = keyJar.getOwners();
         List<Key> symKeys = keyJar.getSigningKey("oct", "", "", null);
@@ -208,35 +215,20 @@ public class KeyJarTest {
 
 
     @Test
-    public void testExtraSlash() throws Exception {
-        Map<String, Object> k1 = new HashMap<>();
-        k1.put("kty", "oct");
-        k1.put("k", "a1b2c3d4");
-        k1.put("use", "sig");
-        Map<String, Object> k2 = new HashMap<>();
-        k2.put("kty", "oct");
-        k2.put("k", "a1b2c3d4");
-        k2.put("use", "ver");
-        List<Map<String, Object>> keyList1 = new ArrayList<>();
-        keyList1.add(k1);
-        keyList1.add(k2);
+    public void testExtraSlash() throws ParseException, Exception {
+        String b64Secret1 = Base64.encodeBase64URLSafeString(
+            "a1b2c3d4".getBytes(Charset.forName("UTF-8")));
+        String jwk1 = "[{\"kty\": \"oct\", \"k\": \"" +  b64Secret1 + "\", \"use\": \"sig\"}," +
+            "{\"kty\": \"oct\", \"k\": \"" + b64Secret1 + "\", \"use\": \"ver\"}]";
+        List<Map<String, Object>> keyList1 = (List<Map<String, Object>>)jsonParser.parse(jwk1);
         KeyBundle keyBundle1 = new KeyBundle(keyList1);
-
-        Map<String, Object> k3 = new HashMap<>();
-        k3.put("kty", "oct");
-        k3.put("k", "e5f6g7h8");
-        k3.put("use", "sig");
-        Map<String, Object> k4 = new HashMap<>();
-        k4.put("kty", "oct");
-        k4.put("k", "e5f6g7h8");
-        k4.put("use", "ver");
-        List<Map<String, Object>> keyList2 = new ArrayList<>();
-        keyList2.add(k3);
-        keyList2.add(k4);
+        String b64Secret2 = Base64.encodeBase64URLSafeString(
+            "e5f6g7h8".getBytes(Charset.forName("UTF-8")));
+        String jwk2 = "[{\"kty\": \"oct\", \"k\": \"" +  b64Secret2 + "\", \"use\": \"sig\"}," +
+            "{\"kty\": \"oct\", \"k\": \"" + b64Secret2 + "\", \"use\": \"ver\"}]";
+        List<Map<String, Object>> keyList2 = (List<Map<String, Object>>)jsonParser.parse(jwk2);
         KeyBundle keyBundle2 = new KeyBundle(keyList2);
-        List<String> usage = new ArrayList<>();
-        usage.add("ver");
-        usage.add("sig");
+        List<String> usage = Arrays.asList("ver", "sig");
         KeyBundle keyBundle3 = KeyBundle.keyBundleFromLocalFile(
             PRIVATE_KEY_FILE, "der", usage);
 
@@ -253,34 +245,19 @@ public class KeyJarTest {
 
     @Test
     public void testIssuerMissingSlash() throws Exception {
-        Map<String, Object> k1 = new HashMap<>();
-        k1.put("kty", "oct");
-        k1.put("k", "a1b2c3d4");
-        k1.put("use", "sig");
-        Map<String, Object> k2 = new HashMap<>();
-        k2.put("kty", "oct");
-        k2.put("k", "a1b2c3d4");
-        k2.put("use", "ver");
-        List<Map<String, Object>> keyList1 = new ArrayList<>();
-        keyList1.add(k1);
-        keyList1.add(k2);
+        String b64Secret1 = Base64.encodeBase64URLSafeString(
+            "a1b2c3d4".getBytes(Charset.forName("UTF-8")));
+        String jwk1 = "[{\"kty\": \"oct\", \"k\": \"" +  b64Secret1 + "\", \"use\": \"sig\"}," +
+            "{\"kty\": \"oct\", \"k\": \"" + b64Secret1 + "\", \"use\": \"ver\"}]";
+        List<Map<String, Object>> keyList1 = (List<Map<String, Object>>)jsonParser.parse(jwk1);
         KeyBundle keyBundle1 = new KeyBundle(keyList1);
-
-        Map<String, Object> k3 = new HashMap<>();
-        k3.put("kty", "oct");
-        k3.put("k", "e5f6g7h8");
-        k3.put("use", "sig");
-        Map<String, Object> k4 = new HashMap<>();
-        k4.put("kty", "oct");
-        k4.put("k", "e5f6g7h8");
-        k4.put("use", "ver");
-        List<Map<String, Object>> keyList2 = new ArrayList<>();
-        keyList2.add(k3);
-        keyList2.add(k4);
+        String b64Secret2 = Base64.encodeBase64URLSafeString(
+            "e5f6g7h8".getBytes(Charset.forName("UTF-8")));
+        String jwk2 = "[{\"kty\": \"oct\", \"k\": \"" +  b64Secret2 + "\", \"use\": \"sig\"}," +
+            "{\"kty\": \"oct\", \"k\": \"" + b64Secret2 + "\", \"use\": \"ver\"}]";
+        List<Map<String, Object>> keyList2 = (List<Map<String, Object>>)jsonParser.parse(jwk2);
         KeyBundle keyBundle2 = new KeyBundle(keyList2);
-        List<String> usage = new ArrayList<>();
-        usage.add("ver");
-        usage.add("sig");
+        List<String> usage = Arrays.asList("ver", "sig");
         KeyBundle keyBundle3 =
             KeyBundle.keyBundleFromLocalFile(PRIVATE_KEY_FILE, "der", usage);
 
@@ -295,42 +272,65 @@ public class KeyJarTest {
         Assert.assertEquals(ownerKeys.size(), 1);
     }
 
+
     @Test
-    public void testMissingSlash2() throws Exception {
-        String json = "[{" +
-            "\"kty\": \"oct\"," +
-            "\"k\": \"a1b2c3d4\"," +
-            "\"use\": \"sig\"" +
-            "}," +
-            "{" +
-            "\"kty\": \"oct\"," +
-            "\"k\": \"a1b2c3d4\"," +
-            "\"use\": \"ver\"" +
-            "}" +
-            "]";
-        Object jsonObject = jsonParser.parse(json);
-        List<Map<String, Object>> list = (List<Map<String, Object>>) jsonObject;
-        KeyBundle keyBundle1 = new KeyBundle(list);
-
-
-    }
-
-
-    @Ignore
     public void testGetEnc() throws Exception {
+        String b64Secret1 = Base64.encodeBase64URLSafeString(
+            "a1b2c3d4".getBytes(Charset.forName("UTF-8")));
+        String jwk1 = "[{\"kty\": \"oct\", \"k\": \"" +  b64Secret1 + "\", \"use\": \"sig\"}," +
+            "{\"kty\": \"oct\", \"k\": \"" + b64Secret1 + "\", \"use\": \"enc\"}]";
+        List<Map<String, Object>> keyList1 = (List<Map<String, Object>>)jsonParser.parse(jwk1);
+        KeyBundle keyBundle1 = new KeyBundle(keyList1);
+        String b64Secret2 = Base64.encodeBase64URLSafeString(
+            "e5f6g7h8".getBytes(Charset.forName("UTF-8")));
+        String jwk2 = "[{\"kty\": \"oct\", \"k\": \"" +  b64Secret2 + "\", \"use\": \"sig\"}," +
+            "{\"kty\": \"oct\", \"k\": \"" + b64Secret2 + "\", \"use\": \"enc\"}]";
+        List<Map<String, Object>> keyList2 = (List<Map<String, Object>>)jsonParser.parse(jwk2);
+        KeyBundle keyBundle2 = new KeyBundle(keyList2);
+        List<String> usage = Arrays.asList("ver", "sig");
+        KeyBundle keyBundle3 =
+            KeyBundle.keyBundleFromLocalFile(PRIVATE_KEY_FILE, "der", usage);
+
+        KeyJar keyJar = new KeyJar();
+        keyJar.addKeyBundle("", keyBundle1);
+        keyJar.addKeyBundle("http://www.example.org/", keyBundle2);
+        keyJar.addKeyBundle("http://www.example.org/", keyBundle3);
+
+        Assert.assertEquals(1, keyJar.getKeys("enc", "oct", "", "", null).size());
 
     }
 
 
-    @Ignore
+    @Test
     public void testEncNotMine() throws Exception {
+        String b64Secret1 = Base64.encodeBase64URLSafeString(
+            "a1b2c3d4".getBytes(Charset.forName("UTF-8")));
+        String jwk1 = "[{\"kty\": \"oct\", \"k\": \"" +  b64Secret1 + "\", \"use\": \"sig\"}," +
+            "{\"kty\": \"oct\", \"k\": \"" + b64Secret1 + "\", \"use\": \"enc\"}]";
+        List<Map<String, Object>> keyList1 = (List<Map<String, Object>>)jsonParser.parse(jwk1);
+        KeyBundle keyBundle1 = new KeyBundle(keyList1);
+        String b64Secret2 = Base64.encodeBase64URLSafeString(
+            "e5f6g7h8".getBytes(Charset.forName("UTF-8")));
+        String jwk2 = "[{\"kty\": \"oct\", \"k\": \"" +  b64Secret2 + "\", \"use\": \"sig\"}," +
+            "{\"kty\": \"oct\", \"k\": \"" + b64Secret2 + "\", \"use\": \"enc\"}]";
+        List<Map<String, Object>> keyList2 = (List<Map<String, Object>>)jsonParser.parse(jwk2);
+        KeyBundle keyBundle2 = new KeyBundle(keyList2);
+        List<String> usage = Arrays.asList("ver", "sig");
+        KeyBundle keyBundle3 =
+            KeyBundle.keyBundleFromLocalFile(PRIVATE_KEY_FILE, "der", usage);
+
+        KeyJar keyJar = new KeyJar();
+        keyJar.addKeyBundle("", keyBundle1);
+        keyJar.addKeyBundle("http://www.example.org/", keyBundle2);
+        keyJar.addKeyBundle("http://www.example.org/", keyBundle3);
+
+        Assert.assertEquals(2, keyJar.getKeys("enc", "oct", "http://www.example.org/", "", null).size());
     }
 
 
     @Test
     public void testDumpIssuerKeys() throws Exception {
-        List<String> usage = new ArrayList<>();
-        usage.add("sig");
+        List<String> usage = Collections.singletonList("sig");
         KeyBundle keyBundle =
             KeyBundle.keyBundleFromLocalFile(JSON_PUBLIC_KEY_FILE, "jwks", usage);
         KeyJar keyJar = new KeyJar();
@@ -357,9 +357,16 @@ public class KeyJarTest {
         Assert.assertEquals(keyInfo.get("alg"), "RS256");
     }
 
-    @Ignore
+    @Test
     public void testNoUse() throws Exception {
-
+        JSONObject jsonObject = (JSONObject) jsonParser.parse(JWK0STRING);
+        List<Map<String, Object>> keys = (List<Map<String, Object>>) jsonObject.get("keys");
+        KeyBundle keyBundle = new KeyBundle(keys);
+        KeyJar keyJar = new KeyJar();
+        List<KeyBundle> keyBundles = Collections.singletonList(keyBundle);
+        keyJar.setBundle("abcdefgh", keyBundles);
+        List<Key> encKeys = keyJar.getEncryptKey("RSA", "abcdefgh", null, null);
+        Assert.assertNotEquals(0, encKeys.size());
     }
 
 
@@ -420,7 +427,7 @@ public class KeyJarTest {
     }
 
     @Test
-    public void testLoadMissingKeyParameter() throws ImportException, ParseException {
+    public void testLoadMissingKeyParameter() throws ImportException, ParseException , IOException, JWKException, ValueError {
         String jwk = "{\"keys\":[{\"e\":\"AQAB\",\"kty\":\"RSA\",\"kid\":\"rsa1\"}]}";
         Object json = jsonParser.parse(jwk);
         KeyJar keyJar = new KeyJar();
@@ -430,7 +437,7 @@ public class KeyJarTest {
     }
 
     @Test
-    public  void testLoadUnknownKeyType() throws ParseException, ImportException {
+    public  void testLoadUnknownKeyType() throws ParseException, ImportException, IOException, JWKException, ValueError  {
         String jwk = "{\"keys\":[{\"n\":\"zkpUgEgXICI54blf6iWiD2RbMDCOO1jV0VSff1MFFnujM4othfMsad7" +
             "H1kRo50YM5S_X9TdvrpdOfpz5aBaKFhT6Ziv0nhtcekq1eRl8mjBlvGKCE5XGk-0LFSDwvqgkJoFYInq7bu0" +
             "a4JEzKs5AyJY75YlGh879k1Uu2Sv3ZZOunfV1O1Orta-NvS-aG_jN5cstVbCGWE20H0vFVrJKNx0Zf-u-aA-" +
@@ -478,6 +485,92 @@ public class KeyJarTest {
         args.put("alg", "ES512");
         List<Key> keys = keyJar.getKeys("sig", "EC", "", "", args);
         Assert.assertEquals(0, keys.size());
+    }
+
+    @Test
+    public void testKeysByAlgUsage() throws Exception {
+        JSONObject jsonObject = (JSONObject) jsonParser.parse(JWKS_SPO);
+        KeyJar keyJar = new KeyJar();
+        keyJar.importJwks((Map<String, Object>)jsonObject, "");
+        List<Key> keys = keyJar.keysByAlgAndUsage("", "RS256", "sig");
+        Assert.assertEquals(2, keys.size());
+    }
+
+
+    @Test
+    public void testRemoveAfter() throws Exception {
+        final String KEYDEFS = "[{\"type\": \"RSA\", \"key\": \"\", \"use\": [\"sig\"]}," +
+            "{\"type\": \"EC\", \"crv\": \"P-256\", \"use\": [\"sig\"]}]";
+        Object jsonObject = jsonParser.parse(KEYDEFS);
+        KeyJar keyJar = KeyJar.buildKeyJar((List<Object>) jsonObject, null, null, null);
+        List<Key> keyList = keyJar.getIssuerKeys("");
+        List<String> oldKids = new ArrayList<>();
+        for (Key key : keyList) {
+            if (!Utils.isNullOrEmpty(key.getKid())) {
+                oldKids.add(key.getKid());
+            }
+        }
+        Assert.assertEquals(2, keyList.size());
+
+        // Rotate_keys = create new keys + make the old as inactive
+        keyJar = KeyJar.buildKeyJar((List<Object>) jsonObject, null, keyJar, null);
+        keyJar.setRemoveAfter(1);
+        // None are remove since none are marked as inactive yet
+        keyJar.removeOutdated(0);
+        List<String> interimKids = new ArrayList<>();
+        for (Key key : keyJar.getIssuerKeys("")) {
+            if (!Utils.isNullOrEmpty(key.getKid())) {
+                interimKids.add(key.getKid());
+            }
+        }
+        Assert.assertEquals(4, interimKids.size());
+        // Now mark the keys to be inactivated
+        long now = System.currentTimeMillis();
+        for (Key key : keyJar.getIssuerKeys("")) {
+            if (oldKids.contains(key.getKid())) {
+                if (key.inactiveSince == 0) {
+                    key.inactiveSince = now;
+                }
+            }
+        }
+
+        keyJar.removeOutdated(now + 5000);
+        List<String> newKids = new ArrayList<>();
+        for (Key key : keyJar.getIssuerKeys("")) {
+            if(!Utils.isNullOrEmpty(key.getKid())) {
+                newKids.add(key.getKid());
+            }
+        }
+        Assert.assertEquals(2, newKids.size());
+        newKids.retainAll(oldKids);
+
+        Assert.assertEquals(0, newKids.size());
+
+    }
+
+    @Test
+    public void testCopy() throws ParseException, ImportException, IOException, JWKException, ValueError {
+        KeyBundle aliceBundle = new KeyBundle((List<Map<String,Object>>)((Map<String, Object>)
+            jsonParser.parse(JWK0STRING)).get("keys"));
+        KeyBundle bobBundle = new KeyBundle((List<Map<String,Object>>)((Map<String, Object>)
+            jsonParser.parse(JWK1STRING)).get("keys"));
+        KeyBundle cBundle = new KeyBundle((List<Map<String,Object>>)((Map<String, Object>)
+            jsonParser.parse(JWK2STRING)).get("keys"));
+        KeyJar keyJar = new KeyJar();
+        keyJar.setBundle("Alice", Collections.singletonList(aliceBundle));
+        keyJar.setBundle("Bob", Collections.singletonList(bobBundle));
+        keyJar.setBundle("C", Collections.singletonList(cBundle));
+        KeyJar keyJarCopy = keyJar.copy();
+        List<String> owners = keyJarCopy.getOwners();
+        Assert.assertTrue(owners.containsAll(Arrays.asList("Alice", "Bob", "C")));
+
+        Assert.assertEquals(0, keyJarCopy.getKeys("sig", "oct", "Alice", null ,null).size());
+        Assert.assertEquals(1, keyJarCopy.getKeys("sig", "rsa", "Alice", null ,null).size());
+        Assert.assertEquals(1, keyJarCopy.getKeys("sig", "oct", "Bob", null ,null).size());
+        Assert.assertEquals(1, keyJarCopy.getKeys("sig", "rsa", "Bob", null ,null).size());
+        Assert.assertEquals(0, keyJarCopy.getKeys("sig", "oct", "C", null ,null).size());
+        Assert.assertEquals(4, keyJarCopy.getKeys("sig", "rsa", "C", null ,null).size());
+
     }
 
 
