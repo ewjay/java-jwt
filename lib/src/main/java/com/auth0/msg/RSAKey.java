@@ -6,8 +6,6 @@ import com.auth0.jwt.exceptions.oicmsg_exceptions.JWKException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
 import org.apache.commons.codec.binary.Base64;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -21,6 +19,8 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateCrtKey;
@@ -32,13 +32,13 @@ import java.security.spec.RSAPrivateCrtKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 
 public class RSAKey extends Key {
 
-    final private static Logger logger = LoggerFactory.getLogger(RSAKey.class);
     private String n;
     private String e;
     private String d;
@@ -47,26 +47,72 @@ public class RSAKey extends Key {
     private String dp;
     private String dq;
     private String qi;
-    private String oth;
+    private List<Map<String, String>> oth;
 
+
+    /**
+     * Constructs a new RSAKey instance
+     * Can just pass the private/public base64url encoded string components of the JWK
+     * or the java.security.interface.RSAKey
+     *
+     * The name of parameters used in this class are the same as
+     * specified in the RFC 7517.
+
+     * According to RFC7517 the JWK representation of a RSA (public key) can be
+     * something like this:
+     *
+     * {
+     *  "kty":"RSA",
+     *  "use":"sig",
+     *  "kid":"1b94c",
+     *  "n":"vrjOfz9Ccdgx5nQudyhdoR17V-IubWMeOZCwX_jj0hgAsz2J_pqYW08
+     *  PLbK_PdiVGKPrqzmDIsLI7sA25VEnHU1uCLNwBuUiCO11_-7dYbsr4iJmG0Q
+     *  u2j8DsVyT1azpJC_NG84Ty5KKthuCaPod7iI7w0LK9orSMhBEwwZDCxTWq4a
+     *  YWAchc8t-emd9qOvWtVMDC2BXksRngh6X5bUYLy6AyHKvj-nUy1wgzjYQDwH
+     *  MTplCoLtU-o-8SNnZ1tmRoGE9uJkBLdh5gFENabWnU5m1ZqZPdwS-qo-meMv
+     *  VfJb6jJVWRpl2SUtCnYG2C32qvbWbjZ_jBPD5eunqsIo1vQ",
+     *  "e":"AQAB",
+     * }
+     *
+     * Parameters according to https://tools.ietf.org/html/rfc7518#section-6.3
+     *
+     * @param alg algorithm that this Key is used for
+     * @param use The intended use of this Key ("sig" or "enc")
+     * @param kid kid key ID
+     * @param x5c array of certificates. The certificate with the key must be first.
+     * @param x5t base64url-encoded SHA-1 thumbprint of the DER encoding of an X.509 certificate
+     * @param x5u URI that points to a resource for an X.509 public key certificate or chain
+     * @param key the java.security.interface.RSAKey that backs this object
+     * @param n base64url encoded modulus value for the RSA public key
+     * @param e base64url encoded exponent value for the RSA public key
+     * @param d base64url encoded private exponent value for the RSA private key
+     * @param p base64url encoded first prime factor value for the RSA private key
+     * @param q base64url encoded second Prime Factor value for the RSA private key
+     * @param dp base64url encoded First Factor CRT Exponent value for the RSA private key
+     * @param dq base64url encoded Second Factor CRT Exponent value for the RSA private key
+     * @param qi base64url encoded First CRT Coefficient value for the RSA private key
+     * @param oth list of base64url encoded Other Primes Info encoded  value for the RSA private key
+     * @param args dictionary of additional information for this key
+     * @throws JWKException
+     */
     public RSAKey(String alg, String use, String kid, String[] x5c, String x5t,
                   String x5u, java.security.Key key, String n, String e, String d, String p,
-                  String q, String dp, String dq, String qi, String oth, Map<String, String> args)
-            throws JWKException{
+                  String q, String dp, String dq, String qi, List<Map<String,String>> oth,
+                  Map<String, String> args) throws JWKException{
         super("RSA", alg, use, kid, x5c, x5t, x5u, key, args);
         members.addAll(Arrays.asList("n", "e", "d", "p", "q"));
         longs.addAll(Arrays.asList("n", "e", "d", "p", "q", "dp", "dq", "qi", "oth"));
         publicMembers.addAll(Arrays.asList("n", "e"));
         required.addAll(Arrays.asList("n", "e"));
-        this.n = n;
-        this.e = e;
-        this.d = d;
-        this.p = p;
-        this.q = q;
-        this.dp = dp;
-        this.dq = dq;
-        this.qi = qi;
-        this.oth = oth; // TODO should be an array of oths
+        this.n = Utils.isNullOrEmpty(n) ? "" : n;
+        this.e = Utils.isNullOrEmpty(e) ? "" : e;
+        this.d = Utils.isNullOrEmpty(d) ? "" : d;
+        this.p = Utils.isNullOrEmpty(p) ? "" : p;
+        this.q = Utils.isNullOrEmpty(q) ? "" : q;
+        this.dp = Utils.isNullOrEmpty(dp) ? "" : dp;
+        this.dq = Utils.isNullOrEmpty(dq) ? "" : dq;
+        this.qi = Utils.isNullOrEmpty(qi) ? "" : qi;
+        this.oth = oth == null? Collections.<Map<String,String>>emptyList() : oth;
 
         boolean hasPublicKeyParts = (!Utils.isNullOrEmpty(n))  &&
                 (!Utils.isNullOrEmpty(n));
@@ -84,20 +130,22 @@ public class RSAKey extends Key {
             throw new JWKException("Missing required parameter");
     }
 
-    public RSAKey(String use) throws JWKException {
-        this("", use, "", null, "", "", null, "", "",
-            "", "", "", "", "", "", "", null);
-    }
 
+    /**
+     * Constructs a RSAKey instance using only a java.security.interfaces.RSAKey key
+     * @param key java.security.interfaces.RSAKey(private/public) instance
+     * @param use use string (enc/sig)
+     * @throws JWKException
+     */
     public RSAKey(java.security.Key key, String use) throws JWKException {
         this("", use, "", null, "", "", key, "", "", "",
-            "", "", "", "", "", "", null);
+            "", "", "", "", "", Collections.<Map<String,String>>emptyList(), null);
     }
 
     @Override
     /**
      *  Based on a text based representation of an RSA key this method
-     *  instantiates a RSAPrivateKey or RSAPublicKey instance
+     *  instantiates a RSAPrivateKey or RSAPublicKey internally
      */
     public void deserialize() throws DeserializationNotPossible {
 
@@ -127,14 +175,12 @@ public class RSAKey extends Key {
                 }
 
                 if(x5c != null && x5c.length > 0) {
-                    // TODO handle certs
                     List<X509Certificate> certChain = new ArrayList<>();
                     for(String cert : x5c) {
                         try {
                             certChain.add(RSAKey.parseX509Certificate(cert));
                         }
                         catch (GeneralSecurityException e) {
-                            System.out.println(e.toString());
                         }
                     }
                     if(!Utils.isNullOrEmpty(x5t)) {
@@ -172,12 +218,10 @@ public class RSAKey extends Key {
 
     @Override
      /**
-     * Given a RSAPrivateKey or
-     * RSAPublicKey instance construct the JWK representation.
-     * param private: Should I do the private part or not
-     * return: A JWK as a dictionary
+     * Serializes the internal RSAPrivateKey or RSAPublicKey key into a JWK representation.
+     *
      * @param isPrivate whether to get private key part
-     * @return a JWK as as dictionary
+     * @return a JWK as a dictionary
      * @throws SerializationNotPossible
      */
      public Map<String,Object> serialize(boolean isPrivate) throws SerializationNotPossible {
@@ -216,9 +260,9 @@ public class RSAKey extends Key {
     }
 
     /**
-     * Instantiates a RSAKey from a private/public key
+     * Instantiates a RSAKey from a java.security.interfaces.RSAKey(private/public) key
      * @param key
-     * @return
+     * @return A RSAKey instance
      * @throws JWKException
      */
     public static RSAKey loadKey(java.security.Key key) throws JWKException {
@@ -249,7 +293,7 @@ public class RSAKey extends Key {
 
 
     /**
-     * Converts a public/private RSA key into internal components
+     * Converts a java.security.interfaces.RSAKey(public/private) RSA key into internal components
      * @param key a private or public key
      */
     private void serializeRSAKey(java.security.Key key) {
@@ -262,6 +306,7 @@ public class RSAKey extends Key {
             q = Utils.bigIntToBase64url(privateKey.getPrimeQ());
             dp = Utils.bigIntToBase64url(privateKey.getPrimeExponentP());
             dq = Utils.bigIntToBase64url(privateKey.getPrimeExponentQ());
+            qi = Utils.bigIntToBase64url(privateKey.getCrtCoefficient());
 
         } else if(key instanceof RSAPublicKey) {
             RSAPublicKey publicKey = (RSAPublicKey) key;
@@ -272,16 +317,11 @@ public class RSAKey extends Key {
 
     @Override
     public boolean isPrivateKey() {
-
         if(key != null) {
-            if(key instanceof RSAPrivateKey)
-                return true;
+            return (key instanceof RSAPrivateKey);
         } else {
-            if( checkPrivateKeyMembers()) {
-                return true;
-            }
+            return checkPrivateKeyMembers();
         }
-        return false;
     }
 
     /**
@@ -308,6 +348,9 @@ public class RSAKey extends Key {
     }
 
     @Override
+    /**
+     * Sets properties for the JWK private/public key components
+     */
     public void setProperties(Map<String, Object> props) {
          for (Map.Entry<String, Object> entry : props.entrySet()) {
             String key = entry.getKey();
@@ -327,7 +370,8 @@ public class RSAKey extends Key {
             }  else if(key.equals("qi")) {
                 qi = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
             }  else if(key.equals("oth")) {
-                oth = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
+                oth = val == null ? Collections.<Map<String,String>>emptyList() :
+                    (List<Map<String, String>>) val;
             } else {
                 super.setProperties(props);
             }
@@ -336,7 +380,7 @@ public class RSAKey extends Key {
 
     @Override
     /**
-     *
+     * Gets the java.security.interfaces.RSAKey (Private/public) key
      */
     public java.security.Key getKey(Boolean isPrivate) throws ValueError {
         try {
@@ -369,7 +413,7 @@ public class RSAKey extends Key {
      * @throws IOException
      */
     public static java.security.Key getPemRSAKey(String filename) throws IOException{
-        return KeyUtils.readRSAKeyFromFile(filename);
+        return KeyUtils.getRSAKeyFromFile(filename);
     }
 
     /**
@@ -381,7 +425,12 @@ public class RSAKey extends Key {
      public static X509Certificate parseX509Certificate(String cert)
         throws GeneralSecurityException {
         try {
-            String wrappedCert = "-----BEGIN CERTIFICATE-----\n" + cert + "\n-----END CERTIFICATE-----\n";
+            final String certHeader = "-----BEGIN CERTIFICATE-----\n";
+            final String certFooter = "\n-----END CERTIFICATE-----\n";
+            String wrappedCert = cert;
+            if(!cert.startsWith(certHeader)) {
+                wrappedCert = certHeader + cert + certFooter;
+            }
             CertificateFactory f = CertificateFactory.getInstance("X.509");
             X509Certificate certificate = (X509Certificate)f.generateCertificate(
                 new ByteArrayInputStream(wrappedCert.getBytes("UTF-8")));
@@ -410,8 +459,8 @@ public class RSAKey extends Key {
 
     /**
      * Generates a RSA Key pair
-     * @param size keysize
-     * @return KeyPair
+     * @param size keysize of the RSA key
+     * @return KeyPair containing private/public keys
      */
     public static KeyPair generateRSAKeyPair(int size) {
         KeyPair keyPair = null;
@@ -426,5 +475,119 @@ public class RSAKey extends Key {
         return keyPair;
     }
 
+    /**
+     * Gets the base64url encoded Modulus of the public key
+     * @return base64url encoded Modulus of the public key
+     */
+    public String getN() {
+        return n;
+    }
+
+
+    /**
+     * Gets the base64url encoded Exponent of the public key
+     * @return base64url encoded Exponent of the public key
+     */
+    public String getE() {
+        return e;
+    }
+
+    /**
+     * Gets the base64url encoded Private Exponent of the private key
+     * @return base64url encoded of Private Exponent the private key
+     */
+    public String getD() {
+        return d;
+    }
+
+    /**
+     * Gets the base64url encoded  of First Prime Factor the private key
+     * @return base64url encoded of the First Prime Factor private key
+     */
+    public String getP() {
+        return p;
+    }
+
+    /**
+     * Gets the base64url encoded Second Prime Factor of the private key
+     * @return base64url encoded of Second Prime Factor the private key
+     */
+    public String getQ() {
+        return q;
+    }
+
+    /**
+     * Gets the base64url encoded First Factor CRT Exponent of the private key
+     * @return base64url encoded First Factor CRT Exponent of the private key
+     */
+    public String getDp() {
+        return dp;
+    }
+
+    /**
+     * Gets the base64url encoded Second Factor CRT Exponent of the private key
+     * @return base64url encoded Second Factor CRT Exponent of the private key
+     */
+    public String getDq() {
+        return dq;
+    }
+
+    /**
+     * Gets the base64url encoded First CRT Coefficient of the private key
+     * @return base64url encoded First CRT Coefficient of the private key
+     */
+    public String getQi() {
+        return qi;
+    }
+
+    /**
+     * Gets list of the base64url encoded Other Primes Info of the private key
+     * @return list of base64url encoded Other Primes Info of the  private key
+     */
+    public List<Map<String, String>> getOth() {
+        return oth;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+
+        try {
+            if (other instanceof RSAKey) {
+                RSAKey rsaOther = (RSAKey) other;
+                if (key == null) {
+                    deserialize();
+                }
+                if(rsaOther.key == null) {
+                    rsaOther.deserialize();
+                }
+                if(key instanceof PrivateKey && rsaOther.key instanceof PrivateKey) {
+                    if(checkPrivateKeyMembers() && rsaOther.checkPrivateKeyMembers()) {
+                        if(e.equals(rsaOther.e) &&
+                            n.equals(rsaOther.n) &&
+                            d.equals(rsaOther.d) &&
+                            p.equals(rsaOther.p) &&
+                            q.equals(rsaOther.q) &&
+                            dp.equals(rsaOther.dp) &&
+                            dq.equals(rsaOther.dq) &&
+                            qi.equals(rsaOther.qi) &&
+                            oth.equals(rsaOther.oth)) {
+                            return true;
+                        }
+                    }
+
+                } else if (key instanceof PublicKey && rsaOther.key instanceof PublicKey) {
+                    if(checkPublicKeyMembers() && rsaOther.checkPublicKeyMembers()) {
+                        if(e.equals(rsaOther.e) && n.equals(rsaOther.n)) {
+                            return true;
+                        }
+                    }
+                }
+
+            }
+        } catch (DeserializationNotPossible e) {
+
+        }
+        return false;
+    }
 }
 

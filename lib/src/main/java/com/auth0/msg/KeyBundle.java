@@ -8,7 +8,6 @@ import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.UnknownKeyType;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.UpdateFailed;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
-import com.fasterxml.jackson.core.JsonParser;
 import com.google.common.collect.ImmutableMap;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
@@ -21,12 +20,14 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.security.KeyException;
 import java.security.KeyPair;
 import java.util.ArrayList;
@@ -38,9 +39,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Contains a set of keys that have a common origin.
+ * The sources can be serveral:
+ * - A dictionary provided at the initialization, see keys below.
+ * - A list of dictionaries provided at initialization
+ * - A file containing one of: JWKS, DER encoded key
+ * - A URL pointing to a webpages from which an JWKS can be downloaded
+ */
 public class KeyBundle {
 
-    final private static Logger logger = LoggerFactory.getLogger(KeyBundle.class);
     private static final Map<String, String> map =
             ImmutableMap.of("dec", "enc",
                     "enc", "enc",
@@ -61,29 +69,17 @@ public class KeyBundle {
     private long lastUpdated;
 
     /**
-     * Contains a set of keys that have a common origin.
-     The sources can be serveral:
-     - A dictionary provided at the initialization, see keys below.
-     - A list of dictionaries provided at initialization
-     - A file containing one of: JWKS, DER encoded key
-     - A URL pointing to a webpages from which an JWKS can be downloaded
-
-     :param keys: A dictionary or a list of dictionaries
-     with the keys ["kty", "key", "alg", "use", "kid"]
-     :param source: Where the key set can be fetch from
-     :param verify_ssl: Verify the SSL cert used by the server
-     :param fileformat: For a local file either "jwk" or "der"
-     :param keytype: Iff local file and 'der' format what kind of key it is.
-     presently only 'rsa' is supported.
-     :param keyusage: What the key loaded from file should be used for.
-     Only applicable for DER files
-     * @param keys
-     * @param source
-     * @param cacheTime
-     * @param verifySSL
-     * @param fileFormat
-     * @param keyType
-     * @param keyUsage
+     * Constructs a new KeyBundle instance
+     *
+     * @param keys A list of dictionaries with the keys ["kty", "key", "alg", "use", "kid"]
+     * @param source Where the key set can be fetch from (file, http(s))
+     * @param cacheTime cache time in milliseconds
+     * @param verifySSL whether to verify SSL connection for https sources (unimplemented)
+     * @param fileFormat file format of source (jwk, der)
+     * @param keyType If local file and 'der' format what kind of key it is.
+     *                Presently only 'rsa' is supported.
+     * @param keyUsage What the key loaded from file should be used for. Only applicable for
+     *                 DER files. (sig, enc)
      * @throws ImportException
      */
     public KeyBundle(List<Map<String, Object>> keys, String source, long cacheTime,
@@ -129,7 +125,6 @@ public class KeyBundle {
                     try {
                         this.doLocalJwk(this.source);
                     } catch (UpdateFailed updateFailed) {
-                        logger.error("Local key updated from " + this.source + " failed.");
                     }
                 } else if (this.fileFormat.equals("der")) {
                     doLocalDer(this.source, this.keyType, this.keyUsage);
@@ -139,39 +134,92 @@ public class KeyBundle {
     }
 
 
+    /**
+     * Constructs an empty KeyBundle instance
+     *
+     * @throws ImportException
+     * @throws IOException
+     * @throws JWKException
+     * @throws ValueError
+     */
     public KeyBundle() throws ImportException, IOException, JWKException, ValueError {
         this(null, "", 0, true, "jwk", "RSA", null);
     }
 
-    public KeyBundle(List<Map<String, Object>> keyList, String keyType) throws ImportException, IOException, JWKException, ValueError {
-        this(keyList, "", 0, true, "jwk", keyType, null);
-    }
-
+    /**
+     * Constructs a KeyBundle instance with list of dictionaries with the keys
+     * ["kty", "key", "alg", "use", "kid"]
+     * @param keyList list of dictionaries with the keys ["kty", "key", "alg", "use", "kid"] and
+     *                specific key information
+     * @throws ImportException
+     * @throws IOException
+     * @throws JWKException
+     * @throws ValueError
+     */
     public KeyBundle(List<Map<String, Object>> keyList) throws ImportException, IOException, JWKException, ValueError {
         this(keyList, "", 0, true, "jwk", "", null);
     }
 
-    public KeyBundle(List<Map<String, Object>> keyList, String keyType, List<String> usage)
-        throws ImportException, IOException, JWKException, ValueError {
-        this(keyList, "", 0, true, "jwk", keyType, usage);
-    }
-
+    /**
+     * Constructs a KeyBundle using only a source and whether to verify SSL connections
+     * @param source file or URI resource to fetch JWKs
+     * @param verifySSL
+     * @throws ImportException
+     * @throws IOException
+     * @throws JWKException
+     * @throws ValueError
+     */
     public KeyBundle(String source, boolean verifySSL) throws ImportException, IOException, JWKException, ValueError {
         this(null, source, 0, verifySSL, "jwk", "RSA", null);
     }
 
+    /**
+     * Constructs a KeyBundle using only a source and usage list
+     * @param source file or URI resource to fetch JWKs
+     * @param fileFormat file format of source (jwk, der)
+     * @param usage What the key loaded from file should be used for. Only applicable for
+     *              DER files. (sig, enc)
+     * @throws ImportException
+     * @throws IOException
+     * @throws JWKException
+     * @throws ValueError
+     */
     public KeyBundle(String source, String fileFormat, List<String> usage) throws ImportException, IOException, JWKException, ValueError {
         this(null, source, 0, true, fileFormat, "RSA", usage);
     }
 
+    /**
+     * Constructs an empty KeyBundle for storing keys of specified type
+     * @param keyType If local file and 'der' format what kind of key it is.
+     *                Presently only 'rsa' is supported.
+     * @throws ImportException
+     * @throws IOException
+     * @throws JWKException
+     * @throws ValueError
+     */
     public KeyBundle(String keyType) throws ImportException, IOException, JWKException, ValueError {
         this(null, "", 0, true, "", keyType, null);
     }
 
+    /**
+     * Construct a KeyBundle of the specified keytype and usage
+     * @param keyType If local file and 'der' format what kind of key it is.
+     *                Presently only 'rsa' is supported.
+     * @param usage What the key loaded from file should be used for. Only applicable for
+     *              DER files. (sig, enc)
+     * @throws ImportException
+     * @throws IOException
+     * @throws JWKException
+     * @throws ValueError
+     */
     public KeyBundle(String keyType, List<String> usage) throws ImportException, IOException, JWKException, ValueError {
         this(null, "", 0, true, "", keyType, usage);
     }
 
+    /**
+     * Gets the source of the KeyBundle
+     * @return file or URI resource string
+     */
     public String getSource() {
         return source;
     }
@@ -211,7 +259,7 @@ public class KeyBundle {
                         String dp = (String) key.get("dp");
                         String dq = (String) key.get("dq");
                         String qi = (String) key.get("qi");
-                        String oth = (String) key.get("oth");
+                        List<Map<String, String>> oth = (List<Map<String, String>>) key.get("oth");
 
                         keyInstance = new RSAKey(alg, use, kid, x5c,x5t, x5u, null,
                             n, e, d, p, q, dp, dq, qi, oth, null);
@@ -235,6 +283,11 @@ public class KeyBundle {
         }
     }
 
+    /**
+     * Creates a set of usages for the specified usages
+     * @param uses list of usages (dec, enc, ver, sig)
+     * @return
+     */
     private static List<String> harmonizeUsage(List<String> uses) {
         Set<String> keys = map.keySet();
         Set<String> usagesSet = new HashSet<>();
@@ -246,6 +299,11 @@ public class KeyBundle {
         return new ArrayList<>(usagesSet);
     }
 
+    /**
+     * Load JWK fro local file and add to internal key list
+     * @param fileName path to local JWK file
+     * @throws UpdateFailed
+     */
     public void doLocalJwk(String fileName) throws UpdateFailed {
         JSONParser parser = new JSONParser();
         try {
@@ -256,13 +314,21 @@ public class KeyBundle {
             if(keys != null)
                 doKeys(keys);
         } catch (Exception e) {
-            logger.error("Now 'keys' keyword in JWKS");
             throw new UpdateFailed("Local key updated from " + fileName + " failed.");
         } finally {
             this.lastUpdated = System.currentTimeMillis();
         }
     }
 
+    /**
+     * Load a DER encoded file and create a key from it and store it
+     * @param fileName filename of local DER encode file
+     * @param keyType key type. Presetly only 'rsa" is supported
+     * @param keyUsage list of usages (enc, sig)
+     * @throws ValueError
+     * @throws JWKException
+     * @throws IOException
+     */
     public void doLocalDer(String fileName, String keyType, List<String> keyUsage) throws ValueError, JWKException, IOException {
         if(!keyType.toLowerCase().equals("rsa")) {
             throw new ValueError("Invalid key type");
@@ -285,29 +351,24 @@ public class KeyBundle {
         lastUpdated = System.currentTimeMillis();
     }
 
+    /**
+     * Load a JWKS from a URI and store the keys
+     * @return whether load was successful
+     * @throws UpdateFailed
+     * @throws KeyException
+     */
     public boolean doRemote() throws UpdateFailed, KeyException {
         // TODO Implement caching
         // TODO allowing unverified SSL connections (e.g. no trusts)
-//        Map<String, Object> args = new HashMap<>();
-//        args.put("verify", this.verifySSL);
-//        if (!this.eTag.isEmpty()) {
-//            JSONObject jsonObject = new JSONObject();
-//            jsonObject.put("If-None-Match", this.eTag);
-//            args.put("headers", jsonObject);
-//        }
-
-
         int statusCode;
         HttpResponse response;
         try {
-            logger.debug("KeyBundle fetch keys from: " + this.source);
             HttpClient httpClient = HttpClientBuilder.create().build();
             HttpClient httpclient = new DefaultHttpClient();
             HttpGet httpget = new HttpGet(this.source);
             response = httpclient.execute(httpget);
             statusCode = response.getStatusLine().getStatusCode();
         } catch (Exception e) {
-            logger.error(e.getMessage());
             throw new UpdateFailed("Couldn't make GET request to url: " + this.source);
         }
 
@@ -319,7 +380,6 @@ public class KeyBundle {
             if (keys != null) {
                 doKeys(keys);
             } else {
-                logger.error("No 'keys' keyword in JWKS");
                 throw new UpdateFailed("No 'keys' keyword in JWKS");
             }
         } else if (statusCode == 200) {
@@ -334,12 +394,10 @@ public class KeyBundle {
                 throw new UpdateFailed(this.source);
             }
 
-            logger.debug("Loaded JWKS: " + response.toString() + " from " + this.source);
             JSONArray keys = (JSONArray) this.impJwks.get("keys");
             if (keys != null) {
                 doKeys(keys);
             } else {
-                logger.error("No 'keys' keyword in JWKS");
                 throw new UpdateFailed("No 'keys' keyword in JWKS");
             }
 
@@ -355,15 +413,23 @@ public class KeyBundle {
         return true;
     }
 
+    /**
+     * Parses the HTTP response
+     * @param response The HTTP rEsponse
+     * @return a JSON object representing the contents of the source
+     * @throws IOException
+     * @throws ParseException
+     */
     private JSONObject parseRemoteResponse(HttpResponse response)
         throws IOException, ParseException {
         Header header = response.getFirstHeader("Content-Type");
-        if(header == null || !header.getValue().contains("application/json"))
-            logger.warn("Wrong content-type");
-        logger.debug(String.format("Loaded JWKS: %s from %s", response.toString(), this.source));
         return (JSONObject) new JSONParser().parse(EntityUtils.toString(response.getEntity()));
     }
 
+    /**
+     * Checks to see if keys are up todate
+     * @return
+     */
     private boolean upToDate() {
 
         boolean result = false;
@@ -383,6 +449,11 @@ public class KeyBundle {
         return result;
     }
 
+    /**
+     * Reload the keys if necessary. This is a forced update, will happen even if cache time has
+     * not elapsed. Replaced keys will be marked as inactive and not removed.
+     * @return whether update was successful
+     */
     public boolean update() {
         boolean result = true;
         if (!Utils.isNullOrEmpty(this.source)) {
@@ -399,7 +470,6 @@ public class KeyBundle {
                     result = doRemote();
                 }
             } catch (Exception exception) {
-                logger.error("Key bundle updated failed: " + exception.toString());
                 this.keys = keys;
                 return false;
             }
@@ -418,16 +488,11 @@ public class KeyBundle {
 
 
     /**
-     *        """
-     Return a list of keys. Either all keys or only keys of a specific type
-
-     :param typ: Type of key (rsa, ec, oct, ..)
-     :return: If typ is undefined all the keys as a dictionary
-     otherwise the appropriate keys in a list
-     """
-
-     * @param keyType
-     * @return
+     *
+     * Get a list of keys. Either all keys or only keys of a specific type
+     * @param keyType Type of key (rsa, ec, oct, ..)
+     * @return if keyType is blank/null all the keys as a dictionary
+     *         otherwise the appropriate keys in a list
      */
     public List<Key> get(String keyType) {
 
@@ -446,11 +511,19 @@ public class KeyBundle {
         }
     }
 
+    /**
+     * Gets all the Keys in this KeyBundle after updating them
+     * @return list of all Keys
+     */
     public List<Key> getKeys() {
         this.upToDate();
         return this.keys;
     }
 
+    /**
+     * Gets the list of active keys (keys that haven't been marked inactive)
+     * @return List of active Keys
+     */
     public List<Key> getActiveKeys() {
         List<Key> activeKeys = new ArrayList<>();
         for (Key key : this.keys) {
@@ -462,6 +535,10 @@ public class KeyBundle {
         return activeKeys;
     }
 
+    /**
+     * Remove keys that are of a specific kind
+     * @param keyType type of key (rsa, ec, oct, ...)
+     */
     public void removeKeysByType(String keyType) {
         List<String> types = Arrays.asList(keyType.toLowerCase(), keyType.toUpperCase());
 
@@ -474,6 +551,10 @@ public class KeyBundle {
         }
     }
 
+    /**
+     * Gets the JWK representation of this keybundle
+     * @return JWK string
+     */
     public String toString() {
         try {
             return this.jwks();
@@ -483,10 +564,21 @@ public class KeyBundle {
         }
     }
 
+    /**
+     * Create a JWKS of the using the public key information in this KeyBundle
+     * @return
+     * @throws SerializationNotPossible
+     */
     public String jwks() throws SerializationNotPossible {
         return jwks(false);
     }
 
+    /**
+     * Create a JWKS of the keys in the KeyBundle
+     * @param isPrivate whether to include private key information
+     * @return  JWKS representation of the keys in this bundle
+     * @throws SerializationNotPossible
+     */
     public String jwks(boolean isPrivate) throws SerializationNotPossible{
         this.upToDate();
         JSONObject jwkObject = new JSONObject();
@@ -504,18 +596,36 @@ public class KeyBundle {
         return  jwkObject.toJSONString();
     }
 
+    /**
+     * Adds a key to this KeyBundle
+     * @param key
+     */
     public void append(Key key) {
         this.keys.add(key);
     }
 
+    /**
+     * Removes the specified key from this KeyBundle
+     * @param key The key that should be removed
+     */
     public void remove(Key key) {
         this.keys.remove(key);
     }
 
+    /**
+     * Gets the number of keys in this KeyBundle
+     * @return number of keys in this KeyBundle
+     */
     public int getLength() {
         return this.keys.size();
     }
 
+
+    /**
+     * Return the key that has specific key ID (kid)
+     * @param kid The key ID
+     * @return The Key or null
+     */
     public Key getKeyWithKid(String kid) {
         for (Key key : this.keys) {
             if (key.getKid().equals(kid)) {
@@ -531,6 +641,11 @@ public class KeyBundle {
         return null;
     }
 
+
+    /**
+     * Return a list of key IDs. Note that list list may be shorter then the list of keys.
+     * @return A list of all the key IDs that exists in this bundle
+     */
     public List<String> getKids() {
         this.upToDate();
         List<String> kids = new ArrayList<>();
@@ -543,11 +658,22 @@ public class KeyBundle {
         return kids;
     }
 
+    /**
+     * Mark a specific key as inactive based on the keys KeyID
+     * @param kid The key ID
+     */
     public void markAsInactive(String kid) {
         Key key = getKeyWithKid(kid);
         key.setInactiveSince(System.currentTimeMillis());
     }
 
+    /**
+     * Remove keys that should not be available any more. Outdated means that the key was marked
+     * as inactive at a time that was longer ago then what is given in 'after'.
+     * @param after The length of time in milliseconds the key will remain in the KeyBundle before
+     *              it should be removed.
+     * @param when Time in milliseconds of starting time. To make it easier to test
+     */
     public void removeOutdated(long after, long when){
         long now;
         if (when != 0) {
@@ -565,6 +691,10 @@ public class KeyBundle {
         this.keys = keys;
     }
 
+    /**
+     * Creates a copy of this KeyBundle
+     * @return new KeyBundle copy
+     */
     public KeyBundle copy() {
         try {
             KeyBundle keyBundle = new KeyBundle();
@@ -587,6 +717,18 @@ public class KeyBundle {
     }
 
 
+    /**
+     * Create a KeyBundle based on the content in a local file
+     * @param filename name of file
+     * @param type type of content(der or jwks)
+     * @param usage What the keys should be used for (sig, enc)
+     * @return The created KeyBundle
+     * @throws ImportException
+     * @throws UnknownKeyType
+     * @throws IOException
+     * @throws JWKException
+     * @throws ValueError
+     */
     public static KeyBundle keyBundleFromLocalFile(String filename, String type, List<String> usage)
         throws ImportException, UnknownKeyType, IOException, JWKException, ValueError {
         usage = harmonizeUsage(usage);
@@ -602,7 +744,15 @@ public class KeyBundle {
         return keyBundle;
     }
 
-    public void dumpJwks(List<KeyBundle> keyBundleList, String filename, boolean isPrivate) {
+    /**
+     * Write a JWK to a file. Will ignore symmetric keys !!
+     * @param keyBundleList List of KeyBundles
+     * @param filename
+     * @param isPrivate
+     */
+    public static void dumpJwks(List<KeyBundle> keyBundleList, String filename, boolean isPrivate)
+    throws  FileNotFoundException
+    {
         List<Map<String, Object>> keys = new ArrayList<>();
         for(KeyBundle keyBundle : keyBundleList) {
             for(Key key : keyBundle.getKeys()) {
@@ -618,26 +768,28 @@ public class KeyBundle {
         jsonKeys.put("keys", keys);
 
         JSONObject jsonObject = new JSONObject(jsonKeys);
-        System.out.println(jsonObject.toJSONString());
+        PrintWriter out = null;
+        try {
+            out = new PrintWriter(filename);
+            out.print(jsonObject.toJSONString());
+        } finally {
+            if(out != null) {
+                out.close();
+            }
+        }
     }
 
 
     /**
      * Mints a new RSA key pair and stores it in a file.
-     * :param name: Name of the key file. 2 files will be created one with
-     * the private key the name without extension and the other containing
-     * the public key with '.pub' as extension.
-     * :param path: Path to where the key files are stored
-     * :param size: RSA key size
-     * :return: RSA key
-     * @param name
-     * @param path
-     * @param size
-     * @param use
+     * @param name Name of the key file. 2 files will be created one with
+     *             the private key the name without extension and the other containing
+     *             the public key with '.pub' as extension.
+     * @param path Path to where the key files are stored
+     * @param size RSA key size
+     * @param use Usage for this new key
      */
     public static java.security.PrivateKey createStoreRSAKeyPair(String name, String path, int size, String use) {
-        // TODO
-
         if(Utils.isNullOrEmpty(name)) {
             name = "oidcmsg";
         }

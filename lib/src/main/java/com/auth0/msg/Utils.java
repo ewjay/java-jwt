@@ -6,6 +6,9 @@ import org.apache.commons.codec.binary.StringUtils;
 
 import java.math.BigInteger;
 
+/**
+ * Misc utility functions
+ */
 public abstract class Utils {
 
     /**

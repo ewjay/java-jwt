@@ -1,4 +1,3 @@
-
 package com.auth0.msg;
 
 import com.auth0.jwt.exceptions.oicmsg_exceptions.DeserializationNotPossible;
@@ -21,7 +20,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Basic JSON Web key class. Jason Web keys are described in
+ * Abstract JSON Web key class. Jason Web keys are described in
  * RFC 7517 (https://tools.ietf.org/html/rfc7517).
  * The name of parameters used in this class are the same as
  * specified in RFC 7518 (https://tools.ietf.org/html/rfc7518).
@@ -46,6 +45,19 @@ public abstract class Key {
         (Arrays.asList("kty", "alg", "use", "kid", "x5c", "x5t", "x5u"));
     protected Set<String> required = new HashSet<String>(Arrays.asList("kty"));
 
+    /**
+     * Constructs a new Key
+     *
+     * @param kty Key type (RSA, EC, OCT)
+     * @param alg algorithm that this Key is used for
+     * @param use The intended use of this Key ("sig" or "enc")
+     * @param kid key ID
+     * @param x5c array of certificates. The certificate with the key must be first.
+     * @param x5t base64url-encoded SHA-1 thumbprint of the DER encoding of an X.509 certificate
+     * @param x5u URI that points to a resource for an X.509 public key certificate or chain
+     * @param key A java.security.Key that backs this object
+     * @param args map of additional parameters for this Key
+     */
     public Key(String kty, String alg, String use, String kid, String[] x5c, String x5t,
                String x5u, java.security.Key key, Map<String, String> args) {
         this.kty = Utils.isNullOrEmpty(kty) ? "" : kty;
@@ -66,14 +78,25 @@ public abstract class Key {
             this.args = new HashMap<>();
     }
 
+    /**
+     * Constructs a new Key with all paramets set to empty string or null
+     */
     public Key() {
         this("", "", "", "", null, "", "", null, null);
     }
 
+    /**
+     * Gets the X.509 certificate chain
+     * @return array of X.509 certificates
+     */
     public String[] getX5c() {
         return x5c;
     }
 
+    /**
+     * Sets the X.509 certificate chain
+     * @param x5c array of X.509 certificates
+     */
     public void setX5c(String[] x5c) {
         if(x5c == null)
             this.x5c = new String[0];
@@ -81,69 +104,135 @@ public abstract class Key {
             this.x5c = x5c;
     }
 
+    /**
+     * Gets the base64url-encoded SHA-1 thumbprint of the DER encoding of this Key's X.509
+     * certificate
+     * @return base64url-encoded SHA-1 thumbprint
+     */
     public String getX5t() {
         return x5t;
     }
 
+    /**
+     * Sets the SHA-1 thumbprint of the DER encoding of this Key's X.509
+     * @param x5t base64url encoded SHA-1 thumbprint
+     */
     public void setX5t(String x5t) {
         this.x5t = Utils.isNullOrEmpty(x5t) ? "" : x5t;
     }
 
+    /**
+     * Gets the URI resource that represents this Keys certificate chain
+     * @return string URI
+     */
     public String getX5u() {
         return x5u;
     }
 
+    /**
+     * Sets the URI resource that represents this Keys certificate chain
+     * @param x5u string URI
+     */
     public void setX5u(String x5u) {
         this.x5u = Utils.isNullOrEmpty(x5u) ? "" : x5u;
     }
 
+    /**
+     * Gets the key type for this Key
+     * @return key type string (RSA, EC, OCT)
+     */
     public String getKty() {
         return kty;
     }
 
+    /**
+     * Sets the key type for this Key
+     * @param kty key type (RSA, EC, OCT)
+     */
     public void setKty(String kty) {
         this.kty = Utils.isNullOrEmpty(kty) ? "" : kty;
     }
 
+    /**
+     * Gets the algorithm that this Key is used for
+     * @return algoritihm string
+     */
     public String getAlg() {
         return alg;
     }
 
+    /**
+     * Sets the algorithm that this Key is used for
+     * Algorithms are specified in RFC 7518 (https://tools.ietf.org/html/rfc7518)
+     * @param alg agorithm string
+     */
     public void setAlg(String alg) {
         this.alg = Utils.isNullOrEmpty(kty) ? "" : alg;
     }
 
+    /**
+     * Gets the usage for this Key (enc = encryption, sig = signature)
+     * @return usage fo this Key
+     */
     public String getUse() {
         return use;
     }
 
+    /**
+     * Sets the usage for this Key
+     * @param use usage string (enc = encryption, sig = signature)
+     */
     public void setUse(String use) {
         this.use = Utils.isNullOrEmpty(use) ? "" :use;
     }
 
+    /**
+     * Gets this Key's key ID
+     * @return Key ID string
+     */
     public String getKid() {
         return kid;
     }
 
+    /**
+     * Sets this Key's key ID
+     * @param kid Key ID string
+     */
     public void setKid(String kid) {
         this.kid = Utils.isNullOrEmpty(kid) ? "" :kid;
     }
 
+    /**
+     * Sets the current time in milliseconds as the starting point of inactivity
+     */
     public void setInactiveSince() {
         this.inactiveSince = System.currentTimeMillis();
     }
 
+    /**
+     * Sets the specified time milliseconds as the starting point of inactivity
+     * @param now time in milleseconds
+     */
     public void setInactiveSince(long now) {
         this.inactiveSince = now;
     }
 
+    /**
+     * Gets the time when this Key started being inactive
+     * @return
+     */
     public long getInactiveSince() {
         return inactiveSince;
     }
 
+    /**
+     *  Gets a dictionary that includes the private information as well as extra arguments.
+     *  his method should *not* be used for exporting information about the key.
+     * @return a Map of this Key
+     */
     public Map<String, Object> toDict() {
         try {
-            Map<String, Object> hmap = serialize();
+            Map<String, Object> hmap = serialize(true);
             for (String key : args.keySet()) {
                 hmap.put(key, args.get(key));
             }
@@ -155,6 +244,10 @@ public abstract class Key {
         return new HashMap<>();
     }
 
+    /**
+     * Return the Map of parameters that are common to all types of keys.
+     * @return Map of common Key parameters
+     */
     public Map<String, Object> common() {
         Map<String, Object> args = new HashMap<>();
         args.put("kty", kty);
@@ -171,10 +264,19 @@ public abstract class Key {
         return args;
     }
 
+    /**
+     * Gets string representing the dictionary parameters of this Key
+     * @return string representing the dictionary parameters of this Key
+     */
     public String toString() {
         return this.toDict().toString();
     }
 
+    /**
+     * Sets all common parameters(kty, alg, use, kid, x5t,  x5u, x5c) and
+     * additonal parameters for this key
+     * @param props Map of parameter names and values
+     */
     public void setProperties(Map<String, Object> props) {
         for (Map.Entry<String, Object> entry : props.entrySet()) {
             String key = entry.getKey();
@@ -212,75 +314,15 @@ public abstract class Key {
      * @throws HeaderError
      */
     public boolean verify() throws HeaderError {
-
-        /**
-
-         Python code
-         checks whether values are strings
-         Java constructor only accept strings
-
-
-        for param in self.longs:
-            item = getattr(self, param)
-            if not item or isinstance(item, str):
-                continue
-
-            if isinstance(item, bytes):
-                item = item.decode('utf-8')
-                setattr(self, param, item)
-
-            try:
-                _ = base64url_to_long(item)
-            except Exception:
-                return False
-            else:
-                if [e for e in ['+', '/', '='] if e in item]:
-                    return False
-
-        if self.kid:
-            if not isinstance(self.kid, str):
-                raise HeaderError("kid of wrong value type")
-        return True
-
-         */
-
-        /*
-        Object item = null;
-        for (String key : longs.keySet()) {
-
-            try {
-                item = this.getClass().getField(key).get(this);
-            } catch (Exception e1) {
-                logger.error("Field " + key + " doesn't exist");
-            }
-            if (item == null || item instanceof Number) {
-                continue;
-            }
-
-            if (item instanceof Bytes) {
-                //item = item.decode('utf-8') ???
-                //TODO
-            }
-
-            try {
-                base64URLToLong(item);
-            } catch (Exception e) {
-                return false;
-            } finally {
-                for(String sign : new ArrayList<>(Arrays.asList("+", "/", "="))) {
-                    if(((String) item).contains(sign)) {
-                        return false;
-                    }
-                }
-            }
-
-
-        }
-        */
-
         return true;
     }
 
+
+    /**
+     * Compare 2 Key instances to find out if they represent the same key
+     * @param other The other Key Instance
+     * @return true/false if Keys are same/different
+     */
     public boolean equals(Object other) {
         try {
             Assert.assertTrue(other instanceof Key);
@@ -299,17 +341,23 @@ public abstract class Key {
 
     }
 
+    /**
+     * Gets a list of key names of the JWK dictionary that represents this Key
+     * @return
+     */
     public List<String> getKeys() {
         return new ArrayList<>(this.toDict().keySet());
     }
 
 
     /**
-     * Gets the JWK digest of the key using the specified digest algotithm
+     * Create a thumbprint of the key following the outline in
+     * https://tools.ietf.org/html/rfc7638
      * @param hashFunction Hash function used to perform the digest
      * @param members members of the key to use; null to use default required key members
-     * @return byte[] of digest
-     * @throws NoSuchAlgorithmException, SerializationNotPossible
+     * @return array of bytes of the thumbprint
+     * @throws NoSuchAlgorithmException
+     * @throws SerializationNotPossible
      */
     public byte[] thumbprint(String hashFunction, List<String> members) throws
             NoSuchAlgorithmException, SerializationNotPossible {
@@ -333,16 +381,21 @@ public abstract class Key {
     }
 
     /**
-     * Returns the base64url encoded digest of the key
+     * Returns the base64url encoded digest of the key following the outline in
+     * https://tools.ietf.org/html/rfc7638
      * @param hashFunction digest algorithm to perform digest
      * @return String base64urlencoded string of thumbprint hash
-     * @throws NoSuchAlgorithmException SerializationNotPossible
+     * @throws NoSuchAlgorithmException
+     * @throws SerializationNotPossible
      */
     public String thumbprint(String hashFunction)
         throws NoSuchAlgorithmException, SerializationNotPossible {
         return Base64.encodeBase64URLSafeString(thumbprint(hashFunction, null));
     }
 
+    /**
+     * Construct a Key ID using the thumbprint method and add it to the key attributes.
+     */
     public void addKid() {
         try {
             this.kid = thumbprint("SHA-256");
@@ -367,8 +420,6 @@ public abstract class Key {
     }
 
 
-
-
     /**
      * map key characteristics into attribute values that can be used
      * to create an on-the-wire representation of the key
@@ -391,24 +442,17 @@ public abstract class Key {
 
     /**
      * Starting with information gathered from the on-the-wire representation
-     * initiate an appropriate key.
+     * initiate an appropriate java.security.Key and store it internally.
      */
     public abstract void deserialize() throws DeserializationNotPossible;
 
 
+    /**
+     * Gets the interal java.security.Key that represents this Key
+     * @param isPrivate whether to get the private key or not
+     * @return java.security.Key that backs this object
+     * @throws ValueError
+     */
     public abstract java.security.Key getKey(Boolean isPrivate) throws ValueError;
-
-
-    public static boolean cmpPublicNumbers() {
-        // TODO
-        return true;
-    }
-
-    public static boolean cmpPrivateNumbers() {
-        // TODO
-        return true;
-    }
-
-
 }
 

@@ -23,6 +23,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Class for organizing KeyBundles for a list of issuers( or owners)
+ */
 public class KeyJar {
 
     private boolean verifySSL;
@@ -31,17 +34,41 @@ public class KeyJar {
     private Map<String,List<KeyBundle>> issuerKeys;
     final private static org.slf4j.Logger logger = LoggerFactory.getLogger(KeyJar.class);
 
+    /**
+     * Constructs a KeyJar
+     *
+     * @param verifySSL whether to verify SSL connections
+     * @param removeAfter time in milliseconds to remove outdated KeyBundles
+     */
     public KeyJar(boolean verifySSL, long removeAfter) {
         this.verifySSL = verifySSL;
         this.removeAfter = removeAfter;
         issuerKeys = new HashMap<String, List<KeyBundle>>();
     }
 
+    /**
+     * Constructs a new KeyJar
+     */
     public KeyJar() {
         this(true, 3600000);
     }
 
-    public KeyBundle addUrl(String owner, String url, Map<String,String> args) throws KeyException, ImportException, IOException, JWKException, ValueError {
+    /**
+     * Add a set of keys by url. This method will create a
+     * KeyBundle instance with the url as source specification. If no fileformat is given it's assumed
+     * that what's on the other side is a JWKS.
+     * @param owner string of who issued the keys
+     * @param url URL string wherer the key be found
+     * @param args extra parameters for instantiating KeyBundle
+     * @return a KeyBundle instance
+     * @throws KeyException
+     * @throws ImportException
+     * @throws IOException
+     * @throws JWKException
+     * @throws ValueError
+     */
+    public KeyBundle addUrl(String owner, String url, Map<String,String> args)
+        throws KeyException, ImportException, IOException, JWKException, ValueError {
         if(url == null || url.isEmpty()) {
             throw new KeyException("No jwksUri");
         }
@@ -60,12 +87,14 @@ public class KeyJar {
 
     /**
      * Add Symmetric Key to Jar using
-     * @param owner
+     * @param owner owner of the key
      * @param k symmetric key bytes
-     * @param usage list of uses for the key
+     * @param usage List of what the key can be used for signing/signature verification (sig)
+     *              and/or encryption/decryption (enc)
      * @throws ImportException
      */
-    public void addSymmetricKey(String owner, byte[] k, List<String> usage) throws ImportException, IOException, JWKException, ValueError {
+    public void addSymmetricKey(String owner, byte[] k, List<String> usage)
+        throws ImportException, IOException, JWKException, ValueError {
         if(!issuerKeys.containsKey(owner)) {
             issuerKeys.put(owner, new ArrayList<KeyBundle>());
         }
@@ -94,6 +123,11 @@ public class KeyJar {
         }
     }
 
+    /**
+     * Add a key bundle and bind it to an identifier
+     * @param owner Owner of the keys in the keybundle
+     * @param keyBundle the KeyBundle instance to add
+     */
     public void addKeyBundle(String owner, KeyBundle keyBundle) {
         List<KeyBundle> kbList;
         if(issuerKeys.get(owner) == null) {
@@ -105,19 +139,44 @@ public class KeyJar {
         issuerKeys.put(owner, kbList);
     }
 
+    /**
+     * Get all owner ID's and their key bundles
+     * @return Map of owner IDs and their list of KeyBundles
+     */
     public Map<String, List<KeyBundle>> getBundles() {
         return issuerKeys;
     }
 
+    /**
+     * Bind one or a list of key bundles to a special identifier.
+     * Will overwrite whatever was there before !!
+     * @param owner the owner of the keys in the keybundle
+     * @param kbList list of keybundles to set
+     */
     public void setBundle(String owner, List<KeyBundle> kbList) {
         issuerKeys.put(owner, kbList);
     }
 
+    /**
+     * Gets the list of KeyBundles for a specific owner
+     * @param owner the owner of the keys in the keybundle
+     * @return List of KeyBundles
+     */
     public List<KeyBundle> getBundle(String owner) {
         return  issuerKeys.get(owner);
     }
 
-    public List<Key> getKeys(String keyUse, String keyType, String owner, String kid, Map<String,String> args) {
+    /**
+     * Get all keys that matches a set of search criteria
+     * @param keyUse  A key useful for this usage (enc, dec, sig, ver)
+     * @param keyType type of key (rsa, ec, oct, ..)
+     * @param owner Who is the owner of the keys, "" == me
+     * @param kid A Key Identifier
+     * @param args dictionary of additional key/value pairs
+     * @return A possibly empty list of keys
+     */
+    public List<Key> getKeys(String keyUse, String keyType, String owner, String kid,
+                             Map<String,String> args) {
         String use;
         if(keyUse.equals("dec") || keyUse.equals("enc")) {
             use = "enc";
@@ -203,22 +262,65 @@ public class KeyJar {
         return keyListToReturn;
     }
 
-    public List<Key> getSigningKey(String keyType, String owner, String kid, Map<String,String> args) {
+    /**
+     * Gets all signing keys of the specific type for the specific owner
+     * @param keyType type of key (rsa, ec, oct, ..)
+     * @param owner the owner of the keys
+     * @param kid the key OD
+     * @param args Map of addtional key/value pairs
+     * @return List of possibly empty Keys
+     */
+    public List<Key> getSigningKey(String keyType, String owner, String kid,
+                                   Map<String,String> args) {
         return getKeys("sig", keyType, owner, kid, args);
     }
 
-    public List<Key> getVerifyKey(String keyType, String owner, String kid, Map<String,String> args) {
+    /**
+     * Gets all verification keys of the specific type for the specific owner
+     * @param keyType type of key (rsa, ec, oct, ..)
+     * @param owner the owner of the keys
+     * @param kid the key OD
+     * @param args Map of addtional key/value pairs
+     * @return List of possibly empty Keys
+     */
+    public List<Key> getVerifyKey(String keyType, String owner, String kid,
+                                  Map<String,String> args) {
         return getKeys("ver", keyType, owner, kid, args);
     }
 
-    public List<Key> getEncryptKey(String keyType, String owner, String kid, Map<String,String> args) {
+    /**
+     * Gets all encryption keys of the specific type for the specific owner
+     * @param keyType type of key (rsa, ec, oct, ..)
+     * @param owner the owner of the keys
+     * @param kid the key OD
+     * @param args Map of addtional key/value pairs
+     * @return List of possibly empty Keys
+     */
+    public List<Key> getEncryptKey(String keyType, String owner, String kid,
+                                   Map<String,String> args) {
         return getKeys("enc", keyType, owner, kid, args);
     }
 
-    public List<Key> getDecryptKey(String keyType, String owner, String kid, Map<String,String> args) {
+    /**
+     * Gets all decryption keys of the specific type for the specific owner
+     * @param keyType type of key (rsa, ec, oct, ..)
+     * @param owner the owner of the keys
+     * @param kid the key OD
+     * @param args Map of addtional key/value pairs
+     * @return List of possibly empty Keys
+     */
+    public List<Key> getDecryptKey(String keyType, String owner, String kid,
+                                   Map<String,String> args) {
         return getKeys("dec", keyType, owner, kid, args);
     }
 
+    /**
+     * Gets Keys for the specific owner, algorithm and usage
+     * @param issuer the owner of the keys
+     * @param algorithm the algorithm to be used with the key
+     * @param usage  A key useful for this usage (enc, dec, sig, ver)
+     * @return List of possibly empty keys that match the criteria
+     */
     public List<Key> keysByAlgAndUsage(String issuer, String algorithm, String usage) {
         String keyType;
         if(usage.equals("sig") || usage.equals("ver")) {
@@ -230,6 +332,11 @@ public class KeyJar {
         return getKeys(usage, keyType, issuer, null, null);
     }
 
+    /**
+     * Gets all keys belonging to the specified owner
+     * @param issuer the owner of the keys to retrieve
+     * @return list of possibly empty keys
+     */
     public List<Key> getIssuerKeys(String issuer) {
         List<Key> keyList = new ArrayList<>();
         for(KeyBundle keyBundle : this.issuerKeys.get(issuer)) {
@@ -237,6 +344,7 @@ public class KeyJar {
         }
         return keyList;
     }
+
 
     private String algorithmToKeytypeForJWS(String algorithm) {
         if(algorithm == null || algorithm.toLowerCase().equals("none")) {
@@ -264,10 +372,20 @@ public class KeyJar {
         }
     }
 
+    /**
+     * Getsa list of owner IDs
+     * @return List of owner ID strings
+     */
     public List<String> getOwners() {
        return Arrays.asList(issuerKeys.keySet().toArray(new String[0]));
     }
 
+    /**
+     * Gets the owner ID that matches the URL
+     * @param url URL to match
+     * @return owner ID that matches url
+     * @throws KeyException
+     */
     public String matchOwner(String url) throws KeyException {
         for(String key : this.issuerKeys.keySet()) {
             if(url.startsWith(key)) {
@@ -278,6 +396,17 @@ public class KeyJar {
         throw new KeyException(String.format("No keys for %s", url));
     }
 
+    /**
+     * Fetch keys from another server for the specified owner
+     * @param pcr The provider information from OpenID discovery
+     * @param issuer The provider URL
+     * @param shouldReplace If all previously gathered keys from this provider should be replace
+     * @throws ImportException
+     * @throws KeyException
+     * @throws IOException
+     * @throws JWKException
+     * @throws ValueError
+     */
     public void loadKeys(Map<String,Object> pcr, String issuer, boolean shouldReplace) throws ImportException, KeyException, IOException, JWKException, ValueError {
         logger.debug("loading keys for issuer: " + issuer);
 
@@ -306,6 +435,12 @@ public class KeyJar {
         }
     }
 
+    /**
+     * Find a key bundle based on the source of the keys
+     * @param source A source url
+     * @param issuer The issuer of keys
+     * @return KeyBundle matching source and issuer
+     */
     public KeyBundle find(String source, String issuer) {
         for(KeyBundle keyBundle : this.issuerKeys.get(issuer)) {
             if(keyBundle.getSource().equals(source)) {
@@ -316,6 +451,12 @@ public class KeyJar {
         return null;
     }
 
+    /**
+     * Produces a dictionary that later can be easily mapped into a JSON string representing a JWKS.
+     * @param isPrivate whether to include private key information
+     * @param issuer the owner of the keys
+     * @return
+     */
     public Map<String,List<Map<String, Object>>> exportsJwks(boolean isPrivate, String issuer) {
         List<Map<String, Object>> keys = new ArrayList<>();
         for(KeyBundle keyBundle : this.issuerKeys.get(issuer)) {
@@ -335,11 +476,26 @@ public class KeyJar {
         return keysMap;
     }
 
+    /**
+     * Produces a JSON string representing the JWKS for the specific owner's KeyBundles
+     * @param isPrivate whether to include private key information
+     * @param issuer the owner of the keys
+     * @return JSON string of the JWKS
+     */
     public String exportJwksAsJson(boolean isPrivate, String issuer) {
         JSONObject json = new JSONObject(exportsJwks(isPrivate, issuer));
         return json.toJSONString();
     }
 
+    /**
+     * Import the JWKS object for the specified owner
+     * @param jwks Dictionary representation of a JWKS
+     * @param issuer Who 'owns' the JWKS
+     * @throws ImportException
+     * @throws IOException
+     * @throws JWKException
+     * @throws ValueError
+     */
     public void importJwks(Map<String,Object> jwks, String issuer) throws ImportException, IOException, JWKException, ValueError {
         Object keysObj = jwks.get("keys");
         if(keysObj instanceof List) {
@@ -353,12 +509,29 @@ public class KeyJar {
         }
     }
 
+    /**
+     * Import the JWKS JSON string for the specified owner
+     * @param js JSON string representing the JWKS
+     * @param issuer Who 'owns' the JWKS
+     * @throws ParseException
+     * @throws ImportException
+     * @throws IOException
+     * @throws JWKException
+     * @throws ValueError
+     */
     public void importJwksAsJson(String js, String issuer) throws ParseException, ImportException, IOException, JWKException, ValueError{
         JSONParser parser = new JSONParser();
         JSONObject json = (JSONObject) parser.parse(js);
         importJwks(json, issuer);
     }
 
+    /**
+     * Goes through the complete list of issuers and for each of them removes outdated keys.
+     * Outdated keys are keys that has been marked as inactive at a time that is longer ago
+     * then some set number of milliseconds. The number of milliseconds a carried in the removeAfter
+     * parameter of the constructor
+     * @param when milliseconds of when the starting time is. For facilitating testing.
+     */
     public void removeOutdated(long when)  {
         List<KeyBundle> keyBundleList;
         for(String owner : this.issuerKeys.keySet()) {
@@ -378,14 +551,23 @@ public class KeyJar {
         }
     }
 
-    public List<Key> addKey(List<Key> keys, String owner, String use, String keyType, String kid,
+    /**
+     * Adds keys for the specified owner, use, keytype, kid
+     * @param keys list of keys to add
+     * @param owner the owner of the keys
+     * @param use uses for the keys
+     * @param keyType key type for the keys
+     * @param kid kid of the keys
+     * @param noKidIssuer
+     * @param allowMissingKid
+     * @return list of added keys
+     */
+    private List<Key> addKey(List<Key> keys, String owner, String use, String keyType, String kid,
                             Map<String,List<String>> noKidIssuer, boolean allowMissingKid) {
         if(!this.issuerKeys.keySet().contains(owner)) {
             logger.error("Issuer " + owner + " not in keyjar");
             return keys;
         }
-
-//        logger.debug("Key set summary for " + owner + " : " + keySummary(this, owner));
 
         if(!Utils.isNullOrEmpty(kid)) {
             for(Key key : this.getKeys(use, owner, kid, keyType, null)) {
@@ -418,7 +600,22 @@ public class KeyJar {
         return keys;
     }
 
-    public List<java.security.Key> getJWTVerifyKeys(String jwtString, String issuer, Map<String, List<String>> noKidIssuers, boolean allowMissingKid, boolean trustJKU) throws IOException, JWKException, ValueError {
+    /**
+     * Gets all key for verifying a signed JWT
+     * @param jwtString JWT string
+     * @param issuer owner or issuer of the JWT
+     * @param noKidIssuers list of issuers that do not require kids
+     * @param allowMissingKid whether to allow missing kids
+     * @param trustJKU whether to trust the JWT's jku header for fetching addtional keys (risky)
+     * @return List of usable java.security.Keys
+     * @throws IOException
+     * @throws JWKException
+     * @throws ValueError
+     */
+    public List<java.security.Key> getJWTVerifyKeys(
+        String jwtString, String issuer, Map<String, List<String>> noKidIssuers,
+        boolean allowMissingKid, boolean trustJKU) throws IOException, JWKException, ValueError
+    {
         DecodedJWT jwt = JWT.decode(jwtString);
         String alg = jwt.getAlgorithm();
         String keyType = alg2KeyType(alg);
@@ -484,7 +681,10 @@ public class KeyJar {
     }
 
 
-
+    /**
+     * Copies this KeyJar instance
+     * @return new KeyJar copy
+     */
     public KeyJar copy() {
         KeyJar keyJar = new KeyJar();
         for(String owner : this.issuerKeys.keySet()) {
@@ -575,13 +775,7 @@ public class KeyJar {
         return keyJar;
     }
 
-    public static KeyJar initKeyJar(String publicPath, String privatePath, String keyDefs, String issuer) {
-        // TODO
-
-        return null;
-    }
-
-    private String alg2KeyType(String alg) {
+   private String alg2KeyType(String alg) {
         if(Utils.isNullOrEmpty(alg) || alg.toLowerCase().equals("none")) {
             return "none";
         } else if(alg.startsWith("RS") || alg.startsWith("PS")) {
@@ -611,10 +805,18 @@ public class KeyJar {
         return KeyBundle.rsaInit(spec);
     }
 
+    /**
+     * Gets the time in milliseconds that keys will be removed
+     * @return number of milliseconds that  will be removed
+     */
     public long getRemoveAfter() {
         return removeAfter;
     }
 
+    /**
+     * Sets the time in milliseconds that keys will be removed
+     * @param removeAfter number of milliseconds after which keys will be removed
+     */
     public void setRemoveAfter(long removeAfter) {
         this.removeAfter = removeAfter;
     }

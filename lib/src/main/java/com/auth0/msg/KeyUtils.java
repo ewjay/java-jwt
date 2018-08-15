@@ -4,6 +4,7 @@ import org.bouncycastle.util.io.pem.PemObject;
 import org.bouncycastle.util.io.pem.PemReader;
 import org.bouncycastle.util.io.pem.PemWriter;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -14,13 +15,19 @@ import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 
 
-
+/**
+ * Utility functions for reading/writing PEM encode files
+ *
+ */
 public class KeyUtils {
 
     /**
@@ -60,7 +67,7 @@ public class KeyUtils {
     }
 
     /**
-     * Get the RSA private ky from encoded bytes
+     * Get the RSA private key from encoded bytes
      * @param keyBytes encoded key bytes
      * @param algorithm algorithm for the key (RSA)
      * @return the RSA private key instance
@@ -84,7 +91,7 @@ public class KeyUtils {
      * @return PublicKey The public key
      * @throws IOException
      */
-    public static PublicKey readRSAPublicKeyFromFile(String filepath)
+    public static PublicKey getRSAPublicKeyFromFile(String filepath)
         throws IOException {
         byte[] bytes = KeyUtils.parsePEMFile(new File(filepath));
         return KeyUtils.getRSAPublicKey(bytes, "RSA");
@@ -96,7 +103,7 @@ public class KeyUtils {
      * @return PrivateKey The private key
      * @throws IOException
      */
-    public static PrivateKey readRSAPrivateKeyFromFile(String filepath)
+    public static PrivateKey getRSAPrivateKeyFromFile(String filepath)
         throws IOException {
         byte[] bytes = KeyUtils.parsePEMFile(new File(filepath));
         return KeyUtils.getRSAPrivateKey(bytes, "RSA");
@@ -108,7 +115,7 @@ public class KeyUtils {
      * @return Key a private or private key
      * @throws IOException
      */
-    public static java.security.Key readRSAKeyFromFile(String filepath)
+    public static java.security.Key getRSAKeyFromFile(String filepath)
         throws IOException {
         byte[] bytes = KeyUtils.parsePEMFile(new File(filepath));
 
@@ -144,36 +151,19 @@ public class KeyUtils {
         }
     }
 
+    /**
+     * Gets the RSA public key from a X.509 certificate file
+     * @param pemFile X.509 certificate file
+     * @return RSA public key
+     * @throws IOException
+     * @throws CertificateException
+     */
+    public static java.security.PublicKey getRSAKeyFromCertFile(String pemFile) throws IOException, CertificateException {
+        byte[] bytes = KeyUtils.parsePEMFile(new File(pemFile));
+        CertificateFactory f = CertificateFactory.getInstance("X.509");
+        X509Certificate certificate = (X509Certificate)f.generateCertificate(
+            new ByteArrayInputStream(bytes));
+        return certificate.getPublicKey();
+    }
 
-//    public void SaveKeyPair(String path, KeyPair keyPair) throws IOException {
-//        PrivateKey privateKey = keyPair.getPrivate();
-//        PublicKey publicKey = keyPair.getPublic();
-//
-//        //unencrypted form of PKCS#8 file
-//        JcaPKCS8Generator gen1 = new JcaPKCS8Generator(keyPair.getPrivate(), null);
-//        PemObject obj1 = gen1.generate();
-//        StringWriter sw1 = new StringWriter();
-//        try (JcaPEMWriter pw = new JcaPEMWriter(sw1)) {
-//            pw.writeObject(obj1);
-//        }
-//        String pkcs8Key1 = sw1.toString();
-//        FileOutputStream fos1 = new FileOutputStream("D:\\privatekey-unencrypted.pkcs8");
-//        fos1.write(pkcs8Key1.getBytes());
-//        fos1.flush();
-//        fos1.close();
-//
-//        // Store Public Key.
-//        X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(
-//            publicKey.getEncoded());
-//        FileOutputStream fos = new FileOutputStream(path + "/public.key");
-//        fos.write(x509EncodedKeySpec.getEncoded());
-//        fos.close();
-//
-//        // Store Private Key.
-//        PKCS8EncodedKeySpec pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(
-//            privateKey.getEncoded());
-//        fos = new FileOutputStream(path + "/private.key");
-//        fos.write(pkcs8EncodedKeySpec.getEncoded());
-//        fos.close();
-//    }
 }
