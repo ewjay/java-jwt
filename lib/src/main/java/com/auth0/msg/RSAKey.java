@@ -450,24 +450,20 @@ public class RSAKey extends Key {
             if(!checkPrivateKeyMembers()) {
                 serializeRSAKey(key);
             }
-            if(!checkPrivateKeyMembers())
-                throw new SerializationNotPossible();
-            args.put("n", n);
-            args.put("e", e);
-            args.put("d", d);
-            args.put("p", p);
-            args.put("q", q);
-            args.put("dp", dp);
-            args.put("dq", dq);
-            args.put("qi", qi);
+            if(!Utils.isNullOrEmpty(n)) { args.put("n", n);}
+            if(!Utils.isNullOrEmpty(e)) { args.put("e", e);}
+            if(!Utils.isNullOrEmpty(d)) { args.put("d", d);}
+            if(!Utils.isNullOrEmpty(p)) { args.put("p", p);}
+            if(!Utils.isNullOrEmpty(q)) { args.put("q", q);}
+            if(!Utils.isNullOrEmpty(dp)) { args.put("dp", dp);}
+            if(!Utils.isNullOrEmpty(dq)) { args.put("dq", dq);}
+            if(!Utils.isNullOrEmpty(qi)) { args.put("qi", qi);}
 
         } else {
             if(!checkPublicKeyMembers())
                 serializeRSAKey(key);
-            if(!checkPublicKeyMembers())
-                throw new SerializationNotPossible();
-            args.put("n", n);
-            args.put("e", e);
+            if(!Utils.isNullOrEmpty(n)) { args.put("n", n);}
+            if(!Utils.isNullOrEmpty(e)) { args.put("e", e);}
         }
 
         if(x5c != null && x5c.length > 0) {
