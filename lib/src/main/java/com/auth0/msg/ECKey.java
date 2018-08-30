@@ -88,8 +88,8 @@ public class ECKey extends Key{
      * @param kid kid key ID
      * @param key A java.security.ECKey that backs this object
      * @param crv The Elliptic-Curve that is used for this Key
-     * @param x the base64url encoded X coordinate of this elliptic curve key
-     * @param y the base64url encoded Y coordinate of this elliptic curve key
+     * @param x the base64url encoded public X coordinate of this elliptic curve key
+     * @param y the base64url encoded public Y coordinate of this elliptic curve key
      * @param d the base64url encoded private key value of this elliptic curve key
      * @param args
      * @throws HeaderError
@@ -120,6 +120,139 @@ public class ECKey extends Key{
             deserialize();
         } else
             throw new JWKException("Missing required parameter");
+     }
+
+    /**
+     * Convenience method to get a ECKey builder
+     * @return new ECKeyBuilder instance
+     */
+     public static ECKeyBuilder builder() {
+        return new ECKeyBuilder();
+     }
+
+    /**
+     * Convenience method to get a ECKey builer with a java.security.Key (private/public EC key)
+     * @param key
+     * @return new ECKeyBuilder instance
+     */
+     public static ECKeyBuilder keyBuilder(java.security.Key key) {
+         return new ECKeyBuilder(key);
+     }
+
+    /**
+     * Convenience method to get a ECKey builder using the EC public key components
+     * @param crv The Elliptic-Curve that is used for this Key
+     * @param x the base64url encoded public X coordinate of this elliptic curve key
+     * @param y the base64url encoded public Y coordinate of this elliptic curve key
+      * @return new ECKeyBuilder instance
+     */
+     public static ECKeyBuilder publicKeyBuilder(String crv, String x, String y) {
+         return new ECKeyBuilder(crv, x, y);
+     }
+
+    /**
+     * Convenience method to get a ECKey builder using the EC private key components
+     * @param crv The Elliptic-Curve that is used for this Key
+     * @param x the base64url encoded public X coordinate of this elliptic curve key
+     * @param y the base64url encoded public Y coordinate of this elliptic curve key
+     * @param d the base64url encoded private key value of this elliptic curve key
+     * @return new ECKeyBuilder instance
+     */
+     public static ECKeyBuilder privateKeyBuilder(String crv, String x, String y, String d) {
+         return new ECKeyBuilder(crv, x, y, d);
+     }
+
+
+     public static class ECKeyBuilder extends KeyBuilder<ECKeyBuilder> {
+        private String crv;
+        private String x;
+        private String y;
+        private String d;
+
+
+         @Override
+         protected ECKeyBuilder self() {
+             return this;
+         }
+
+         /**
+          * Create a ECKey builder
+          */
+         public ECKeyBuilder() { }
+
+         /**
+          * Create a ECKey builder using a java.security.Key
+          * @param key the private/public java.security.Key EC key instance
+          */
+         public ECKeyBuilder(java.security.Key key) {
+             this.key = key;
+         }
+
+         /**
+          * Create a ECKey builder using the public key components
+          * @param crv the elliptic curve name
+          * @param x the base64url encoded public X coordinate of the elliptic curve key
+          * @param y the base64url encoded public Y coordinate of the elliptic curve key
+          */
+         public ECKeyBuilder(String crv, String x, String y) {
+             this.crv = crv;
+             this.x = x;
+             this.y = y;
+         }
+
+         /**
+          * Create a ECKey builder using the private key components
+          * @param crv the elliptic curve name
+          * @param x the base64url encoded public X coordinate of the elliptic curve key
+          * @param y the base64url encoded public Y coordinate of the elliptic curve key
+          * @param d the base64url encoded private key value of the elliptic curve key
+          */
+         public ECKeyBuilder(String crv, String x, String y, String d) {
+             this.crv = crv;
+             this.x = x;
+             this.y = y;
+             this.d = d;
+         }
+
+         /**
+          * Set the elliptic curve name
+          * @param crv Elliptic curve
+          * @return ECKey builder instance
+          */
+         public ECKeyBuilder setCrv(String crv) {
+             this.crv = crv;
+             return this;
+         }
+
+         /**
+          * Set the X coordinat of the public point
+          * @param x the base64url encoded X coordinate of elliptic curve's public point
+          * @return ECKey builder instance
+          */
+         public ECKeyBuilder setX(String x) {
+             this.x = x;
+             return this;
+         }
+
+         /**
+          * Set the Y coordinat of the public point
+          * @param y the base64url encoded X coordinate of elliptic curve's public point
+          * @return ECKey builder instance
+          */
+         public ECKeyBuilder setY(String y) {
+             this.y = y;
+             return this;
+         }
+
+         /**
+          * Set the private key valud of the elliptic curve
+          * @param d the base64url encoded private key value of elliptic curve
+          * @return ECKey builder instance
+          */
+         public ECKeyBuilder setD(String d) {
+             this.d = d;
+             return this;
+         }
      }
 
     /**

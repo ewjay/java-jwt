@@ -142,6 +142,223 @@ public class RSAKey extends Key {
             "", "", "", "", "", Collections.<Map<String,String>>emptyList(), null);
     }
 
+    /**
+     * Convenience method to get a RSAKey builder
+     * @return new RSAKeyBuilder instance
+     */
+    public static RSAKeyBuilder builder() {
+        return new RSAKeyBuilder();
+    }
+
+    /**
+     * Convenience method to get a RSAKey builder with a java.security.Key (private/public RSA key)
+     * @param key java
+     * @return instance of RSAKeyBuilder
+     */
+    public static RSAKeyBuilder keyBuilder(java.security.Key key) {
+        return new RSAKeyBuilder(key);
+    }
+
+    /**
+     * Convenience method to get a RSAKey builder using the RSA public key components
+     * @param n base64url encoded modulus value for the RSA public key
+     * @param e base64url encoded exponent value for the RSA public key
+     * @return instance of RSAKeyBuilder
+     */
+    public static RSAKeyBuilder publicKeyBuilder(String n, String e) {
+        return new RSAKeyBuilder(n, e);
+    }
+
+    /**
+     * Get a RSAKey builder using the RSA private key components
+     * @param n base64url encoded modulus value for the RSA public key
+     * @param e base64url encoded exponent value for the RSA public key
+     * @param d base64url encoded private exponent value for the RSA private key
+     * @param p base64url encoded first prime factor value for the RSA private key
+     * @param q base64url encoded second Prime Factor value for the RSA private key
+     * @param dp base64url encoded First Factor CRT Exponent value for the RSA private key
+     * @param dq base64url encoded Second Factor CRT Exponent value for the RSA private key
+     * @param qi base64url encoded First CRT Coefficient value for the RSA private key
+     * @param oth list of base64url encoded Other Primes Info encoded  value for the RSA private key
+     * @return instance of RSAKeyBuilder
+     */
+    public static RSAKeyBuilder privateKeyBuilder(String n, String e, String d, String p, String q,
+        String dp, String dq, String qi, List<Map<String, String>> oth) {
+        return new RSAKeyBuilder(n, e, d, p, q, dp, dq, qi, oth);
+    }
+
+    /**
+     * Builder for RSAKey class
+     */
+    public static class RSAKeyBuilder extends KeyBuilder<RSAKeyBuilder> {
+        private String n;
+        private String e;
+        private String d;
+        private String p;
+        private String q;
+        private String dp;
+        private String dq;
+        private String qi;
+        private List<Map<String, String>> oth;
+
+
+        @Override
+        public RSAKeyBuilder self() {
+            return this;
+        }
+
+        /**
+         * Create a RSAKey builder
+         */
+        public RSAKeyBuilder() {
+        }
+
+        /**
+         * Create a RSAKey builder using a java.security.Key
+         * @param key private/public java.security.Key RSA key instance
+         */
+        public RSAKeyBuilder(java.security.Key key) {
+            this.key = key;
+        }
+
+        /**
+         * Create a RSAKey builder using the RSA public key components
+         * @param n base64url encoded modulus value for the RSA public key
+         * @param e base64url encoded exponent value for the RSA public key
+         */
+        public RSAKeyBuilder(String n, String e) {
+            this.n = n;
+            this.e = e;
+        }
+
+        /**
+         * Create a RSAKey builder using the RSA private key comonents
+         * @param n base64url encoded modulus value for the RSA public key
+         * @param e base64url encoded exponent value for the RSA public key
+         * @param d base64url encoded private exponent value for the RSA private key
+         * @param p base64url encoded first prime factor value for the RSA private key
+         * @param q base64url encoded second Prime Factor value for the RSA private key
+         * @param dp base64url encoded First Factor CRT Exponent value for the RSA private key
+         * @param dq base64url encoded Second Factor CRT Exponent value for the RSA private key
+         * @param qi base64url encoded First CRT Coefficient value for the RSA private key
+         * @param oth list of base64url encoded Other Primes Info encoded  value for the RSA private key
+         */
+        public RSAKeyBuilder(String n, String e, String d, String p, String q, String dp, String dq,
+                             String qi, List<Map<String, String>> oth) {
+
+            this.n = n;
+            this.e = e;
+            this.d = d;
+            this.p = p;
+            this.q = q;
+            this.dp = dp;
+            this.dq = dq;
+            this.qi = qi;
+            this.oth = oth;
+        }
+
+        /**
+         * Set the modulus of the public key component
+         * @param n base64url encoded modulus value for the RSA public key
+         * @return RSAKeyBuilder instance
+         */
+        public RSAKeyBuilder setN(String n) {
+            this.n = n;
+            return this;
+        }
+
+        /**
+         * Set the exponent of the public key component
+         * @param e base64url encoded exponent value for the RSA public key
+         * @return RSAKeyBuilder instance
+         */
+        public RSAKeyBuilder setE(String e) {
+            this.e = e;
+            return this;
+        }
+
+        /**
+         * Set the private exponent of the private key compoent
+         * @param d base64url encoded private exponent value for the RSA private key
+         * @return RSAKeyBuilder instance
+         */
+        public RSAKeyBuilder setD(String d) {
+            this.d = d;
+            return this;
+        }
+
+        /**
+         * Set the first prime factor of the private key compoent
+         * @param p base64url encoded first prime factor value for the RSA private key
+         * @return RSAKeyBuilder instance
+         */
+        public RSAKeyBuilder setP(String p) {
+            this.p = p;
+            return this;
+        }
+
+        /**
+         * Set second Prime Factor the of the private key compoent
+         * @param q base64url encoded second Prime Factor value for the RSA private key
+         * @return RSAKeyBuilder instance
+         */
+        public RSAKeyBuilder setQ(String q) {
+            this.q = q;
+            return this;
+        }
+
+        /**
+         * Set the First Factor CRT Exponent of the private key compoent
+         * @param dp base64url encoded First Factor CRT Exponent value for the RSA private key
+         * @return RSAKeyBuilder instance
+         */
+        public RSAKeyBuilder setDp(String dp) {
+            this.dp = dp;
+            return this;
+        }
+
+        /**
+         * Set the Second Factor CRT Exponent of the private key compoent
+         * @param dq base64url encoded Second Factor CRT Exponent value for the RSA private key
+         * @return RSAKeyBuilder instance
+         */
+        public RSAKeyBuilder setDq(String dq) {
+            this.dq = dq;
+            return this;
+        }
+
+        /**
+         * Set the of irst CRT Coefficient the private key compoent
+         * @param qi base64url encoded First CRT Coefficient value for the RSA private key
+         * @return RSAKeyBuilder instance
+         */
+        public RSAKeyBuilder setQi(String qi) {
+            this.qi = qi;
+            return this;
+        }
+
+        /**
+         * Set the Other Primes Info of the private key compoent
+         * @param oth list of base64url encoded Other Primes Info encoded  value for the
+         *            RSA private key
+         * @return RSAKeyBuilder instance
+         */
+        public RSAKeyBuilder setOth(List<Map<String, String>> oth) {
+            this.oth = oth;
+            return this;
+        }
+
+        /**
+         * Create a new RSAKey instance using the builder's values
+         * @return newly created RSAKey instance
+         * @throws JWKException
+         */
+        public RSAKey build() throws JWKException{
+            return new
+                RSAKey(alg, use, kid, x5c, x5t, x5u, key, n, e, d, p, q, dp, dq, qi, oth, args);
+        }
+    }
+
     @Override
     /**
      *  Based on a text based representation of an RSA key this method

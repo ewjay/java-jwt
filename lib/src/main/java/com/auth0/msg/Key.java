@@ -85,6 +85,131 @@ public abstract class Key {
         this("", "", "", "", null, "", "", null, null);
     }
 
+
+    /**
+     * Base KeyBuilder Class
+     */
+    public static abstract class KeyBuilder<B extends KeyBuilder<B>> {
+        protected String kty;
+        protected String alg;
+        protected String use;
+        protected String kid;
+        protected String[] x5c;
+        protected String x5t;
+        protected String x5u;
+        protected java.security.Key key;
+        protected Map<String, String> args;
+        private B thisObj;
+
+
+        /**
+         * Returns the correct subclassed instance
+         * @return subclassed instance
+         */
+        protected abstract B self();
+
+        /**
+         * Creates a KeyBuilder
+         */
+        protected KeyBuilder() {
+            thisObj = self();
+        }
+
+
+        /**
+         * Sets the key tupe
+         * @param kty type of key (RSA, EC, OCT)
+         * @return subclassed KeyBuilder instance
+         */
+        public B setKty(String kty) {
+            this.kty = kty;
+            return self();
+        }
+
+        /**
+         * Sets the algorithm for use with the key
+         * @param alg algorithm string
+         * @return subclassed KeyBuilder instance
+         */
+        public B setAlg(String alg) {
+            this.alg = alg;
+            return self();
+        }
+
+        /**
+         * Sets the usage for the key
+         * @param use usage string (enc, sig)
+         * @return subclassed KeyBuilder instance
+         */
+        public B setUse(String use) {
+            this.use = use;
+            return self();
+        }
+
+        /**
+         * Sets the key ID
+         * @param kid Key ID string
+         * @return subclassed KeyBuilder instance
+         */
+        public B setKid(String kid) {
+            this.kid = kid;
+            return self();
+        }
+
+        /**
+         * Sets the X.509 certificate chain
+         * @param x5c the list of X.509 certificates
+         * @return subclassed KeyBuilder instance
+         */
+        public B setX5c(String[] x5c) {
+            this.x5c = x5c;
+            return self();
+        }
+
+        /**
+         * Sets the thumbprint of the DER encoding of an X.509 certificate
+         * @param x5t base64url-encoded SHA-1 thumbprint of the DER encoding of an X.509 certificate
+         * @return subclassed KeyBuilder instance
+         */
+        public B setX5t(String x5t) {
+            this.x5t = x5t;
+            return self();
+        }
+
+        /**
+         * Sets the URI that points to a resource for an X.509 public key certificate or chain
+         * @param x5u URI string
+         * @return subclassed KeyBuilder instance
+         */
+        public B setX5u(String x5u) {
+            this.x5u = x5u;
+            return self();
+        }
+
+        /**
+         * Sets the java.security.Key instance that is wrapped by the Key class
+         * @param key java.security.Key instance
+         * @return subclassed KeyBuilder instance
+         */
+        public B setKey(java.security.Key key) {
+            this.key = key;
+            return self();
+        }
+
+
+        /**
+         * Sets the additional information for this key
+         * @param args dictionary of name/value pairs of addtional information
+         * @return subclassed KeyBuilder instance
+         */
+        public B setArgs(Map<String, String> args) {
+            this.args = args;
+            return self();
+        }
+
+    }
+
+
     /**
      * Gets the X.509 certificate chain
      * @return array of X.509 certificates
