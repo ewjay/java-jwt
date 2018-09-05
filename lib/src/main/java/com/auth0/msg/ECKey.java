@@ -351,9 +351,7 @@ public class ECKey extends Key{
         serializedObject.put("crv", crv);
         serializedObject.put("x", x);
         serializedObject.put("y", y);
-        if(isPrivate && Utils.isNullOrEmpty(d)) {
-            throw new SerializationNotPossible();
-        } else {
+        if(isPrivate && !Utils.isNullOrEmpty(d)) {
             serializedObject.put("d", d);
         }
         return serializedObject;
