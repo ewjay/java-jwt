@@ -15,17 +15,23 @@ import static com.auth0.jwt.impl.JsonNodeClaim.extractClaim;
  */
 class BasicHeader implements Header {
     private final String algorithm;
+    private final String encAlgorithm;
     private final String type;
     private final String contentType;
     private final String keyId;
     private final Map<String, JsonNode> tree;
 
-    BasicHeader(String algorithm, String type, String contentType, String keyId, Map<String, JsonNode> tree) {
+    BasicHeader(String algorithm, String encAlgorithm, String type, String contentType, String keyId, Map<String, JsonNode> tree) {
         this.algorithm = algorithm;
+        this.encAlgorithm = encAlgorithm;
         this.type = type;
         this.contentType = contentType;
         this.keyId = keyId;
         this.tree = Collections.unmodifiableMap(tree == null ? new HashMap<String, JsonNode>() : tree);
+    }
+
+    BasicHeader(String algorithm, String type, String contentType, String keyId, Map<String, JsonNode> tree) {
+        this(algorithm, null, type, contentType, keyId, tree);
     }
 
     Map<String, JsonNode> getTree() {
@@ -35,6 +41,12 @@ class BasicHeader implements Header {
     @Override
     public String getAlgorithm() {
         return algorithm;
+    }
+
+
+    @Override
+    public String getEncAlgorithm() {
+        return encAlgorithm;
     }
 
     @Override

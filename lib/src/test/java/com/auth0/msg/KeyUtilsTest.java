@@ -1,6 +1,5 @@
 package com.auth0.msg;
 
-import org.bouncycastle.jcajce.provider.asymmetric.RSA;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -15,6 +14,7 @@ import java.security.Key;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.cert.CertificateException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 
@@ -22,6 +22,7 @@ import java.security.interfaces.RSAPublicKey;
 public class KeyUtilsTest {
     private static final String PRIVATE_KEY_FILE = "src/test/resources/rsa-private.pem";
     private static final String PUBLIC_KEY_FILE = "src/test/resources/rsa-public.pem";
+    private static final String PUBLIC_CERT_FILE = "src/test/resources/cert.pem";
     @Rule
     public ExpectedException exception = ExpectedException.none();
 
@@ -43,7 +44,6 @@ public class KeyUtilsTest {
         Assert.assertEquals(rsaPublicKey.getModulus().bitLength(), keySize);
         Path currentRelativePath = Paths.get("");
         String curDir = currentRelativePath.toAbsolutePath().toString();
-        System.out.println("Current relative path is: " + curDir);
         String filename = "testkey";
         String privateFilename = curDir + File.separator + filename;
         String publicFilename = curDir + File.separator + filename + ".pub";
@@ -53,11 +53,11 @@ public class KeyUtilsTest {
         Assert.assertTrue(publicFile.exists());
         File privateFile = new File(privateFilename);
         Assert.assertTrue(privateFile.exists());
-        PublicKey publicKeyIn = KeyUtils.readRSAPublicKeyFromFile(publicFilename);
+        PublicKey publicKeyIn = KeyUtils.getRSAPublicKeyFromFile(publicFilename);
         Assert.assertNotNull(publicKeyIn);
         Assert.assertTrue(publicKeyIn instanceof RSAPublicKey);
         Assert.assertEquals(((RSAPublicKey)publicKeyIn).getModulus().bitLength(), keySize);
-        PrivateKey privateKeyIn = KeyUtils.readRSAPrivateKeyFromFile(privateFilename);
+        PrivateKey privateKeyIn = KeyUtils.getRSAPrivateKeyFromFile(privateFilename);
         Assert.assertNotNull(privateKeyIn);
         Assert.assertTrue(privateKeyIn instanceof RSAPrivateKey);
         Assert.assertEquals(((RSAPrivateKey)privateKeyIn).getModulus().bitLength(), keySize);
@@ -67,13 +67,33 @@ public class KeyUtilsTest {
 
     @Test
     public void testReadKeyFiles() throws IOException {
-        Key publicKey = KeyUtils.readRSAKeyFromFile(PUBLIC_KEY_FILE);
-        Assert.assertNotNull(publicKey);
+        Key publicKey = KeyUtils.getRSAKeyFromFile(PUBLIC_KEY_FILE);
         Assert.assertNotNull(publicKey);
         Assert.assertTrue(publicKey instanceof RSAPublicKey);
 
-        Key privateKey = KeyUtils.readRSAKeyFromFile(PRIVATE_KEY_FILE);
+        Key privateKey = KeyUtils.getRSAKeyFromFile(PRIVATE_KEY_FILE);
         Assert.assertNotNull(privateKey);
         Assert.assertTrue(privateKey instanceof RSAPrivateKey);
+    }
+
+    @Test
+    public void testReadPrivateKeyFile() throws IOException {
+        PrivateKey privateKey = KeyUtils.getRSAPrivateKeyFromFile(PRIVATE_KEY_FILE);
+        Assert.assertNotNull(privateKey);
+        Assert.assertTrue(privateKey instanceof RSAPrivateKey);
+   }
+
+    @Test
+    public void testReadPublicKeyFiles() throws IOException {
+        PublicKey publicKey = KeyUtils.getRSAPublicKeyFromFile(PUBLIC_KEY_FILE);
+        Assert.assertNotNull(publicKey);
+        Assert.assertTrue(publicKey instanceof RSAPublicKey);
+    }
+
+    @Test
+    public void testGetRSAKeyFromCertFile() throws IOException, CertificateException {
+        PublicKey rsaPublicKey = KeyUtils.getRSAKeyFromCertFile(PUBLIC_CERT_FILE);
+        Assert.assertNotNull(rsaPublicKey);
+        Assert.assertTrue(rsaPublicKey instanceof RSAPublicKey);
     }
 }

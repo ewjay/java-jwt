@@ -1,5 +1,7 @@
 package com.auth0.jwt.algorithms;
 
+import com.auth0.jwt.exceptions.DecryptionException;
+import com.auth0.jwt.exceptions.EncryptionException;
 import com.auth0.jwt.exceptions.SignatureGenerationException;
 import com.auth0.jwt.exceptions.SignatureVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
@@ -130,6 +132,69 @@ public abstract class Algorithm {
         RSAPublicKey publicKey = key instanceof RSAPublicKey ? (RSAPublicKey) key : null;
         RSAPrivateKey privateKey = key instanceof RSAPrivateKey ? (RSAPrivateKey) key : null;
         return RSA512(publicKey, privateKey);
+    }
+
+    /**
+     * Creates a new Algorithm instance using RSA/ECB/PKCS1Padding (JWE RSA1_5) for JWE encryption
+     * @param keyProvider the provider of the Public Key and Private Key for the encryption and decryption instance.
+     * @return a valid RSA1_5 Algorithm.
+     * @throws IllegalArgumentException if the provided Key is null
+     */
+    public static Algorithm RSA1_5(RSAKeyProvider keyProvider) throws IllegalArgumentException {
+        return new RSAAlgorithm("RSA1_5", "RSA/ECB/PKCS1Padding", keyProvider);
+    }
+
+    /**
+     * Creates a new Algorithm instance using RSA/ECB/PKCS1Padding (JWE RSA1_5) for JWE encryption
+     * @param publicKey  the key to use in the encryption instance.
+     * @param privateKey the key to use in the decryption instance.
+     * @return a valid RSA1_5 Algorithm
+     * @throws IllegalArgumentException if both provided Keys are null.
+     */
+    public static Algorithm RSA1_5(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
+        return RSA1_5(RSAAlgorithm.providerForKeys(publicKey, privateKey));
+    }
+
+    /**
+     * Creates a new Algorithm instance using RSA/ECB/OAEPWithSHA-1AndMGF1Padding (JWE RSA-OAEP) for JWE encryption
+     * @param keyProvider the provider of the Public Key and Private Key for the encryption and decryption instance
+     * @return a valid RSAOAEP Algorithm
+     * @throws IllegalArgumentException if the provided Key is null
+     */
+    public static Algorithm RSAOAEP(RSAKeyProvider keyProvider) throws IllegalArgumentException {
+        return new RSAAlgorithm("RSA-OAEP", "RSA/ECB/OAEPWithSHA-1AndMGF1Padding", keyProvider);
+    }
+
+    /**
+     * Creates a new Algorithm instance using RSA/ECB/OAEPWithSHA-1AndMGF1Padding (JWE RSA-OAEP) for JWE encryption
+     * @param publicKey  the key to use in the encryption instance.
+     * @param privateKey the key to use in the decryption instance.
+     * @return a valid RSAOAEP Algorithm
+     * @throws IllegalArgumentException if both provided Keys are null.
+     */
+    public static Algorithm RSAOAEP(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
+        return RSAOAEP(RSAAlgorithm.providerForKeys(publicKey, privateKey));
+    }
+
+    /**
+     * Creates a new Algorithm instance using RSA/ECB/OAEPWithSHA-1AndMGF1Padding (JWE RSA-OAEP-256) for JWE encryption
+     * @param keyProvider the provider of the Public Key and Private Key for the encryption and decryption instance
+     * @return a valid RSAOAEP256 Algorithm
+     * @throws IllegalArgumentException if the provided Key is null
+     */
+    public static Algorithm RSAOAEP256(RSAKeyProvider keyProvider) throws IllegalArgumentException {
+        return new RSAAlgorithm("RSA-OAEP-256", "RSA/ECB/OAEPWithSHA-256AndMGF1Padding", keyProvider);
+    }
+
+    /**
+     * Creates a new Algorithm instance using RSA/ECB/OAEPWithSHA-1AndMGF1Padding (JWE RSA-OAEP-256) for JWE encryption
+     * @param publicKey  the key to use in the encryption instance.
+     * @param privateKey the key to use in the decryption instance.
+     * @return a valid RSAOAEP256 Algorithm
+     * @throws IllegalArgumentException  if both provided Keys are null.
+     */
+    public static Algorithm RSAOAEP256(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
+        return RSAOAEP256(RSAAlgorithm.providerForKeys(publicKey, privateKey));
     }
 
     /**
@@ -300,6 +365,31 @@ public abstract class Algorithm {
         return ECDSA512(ECDSAAlgorithm.providerForKeys(publicKey, privateKey));
     }
 
+
+    public static Algorithm A128CBC_HS256(CipherParams cipherParams) throws IllegalArgumentException {
+        return new AESHSAlgorithm("A128CBC-HS256", "AES/CBC/PKCS5Padding", cipherParams);
+    }
+
+    public static Algorithm A192CBC_HS384(CipherParams cipherParams) throws IllegalArgumentException {
+        return new AESHSAlgorithm("A192CBC-HS384", "AES/CBC/PKCS5Padding", cipherParams);
+    }
+
+    public static Algorithm A256BC_HS512(CipherParams cipherParams) throws IllegalArgumentException {
+        return new AESHSAlgorithm("A256CBC-HS512", "AES/CBC/PKCS5Padding", cipherParams);
+    }
+
+    public static Algorithm A128GCM(CipherParams cipherParams) throws IllegalArgumentException {
+        return new AESGCMAlgorithm("A128GCM", "AES/GCM/NoPadding", cipherParams);
+    }
+
+    public static Algorithm A192GCM(CipherParams cipherParams) throws IllegalArgumentException {
+        return new AESGCMAlgorithm("A192GCM", "AES/GCM/NoPadding", cipherParams);
+    }
+
+    public static Algorithm A256GCM(CipherParams cipherParams) throws IllegalArgumentException {
+        return new AESGCMAlgorithm("A256GCM", "AES/GCM/NoPadding", cipherParams);
+    }
+
     /**
      * Creates a new Algorithm instance using SHA512withECDSA. Tokens specify this as "ES512".
      *
@@ -318,6 +408,24 @@ public abstract class Algorithm {
 
     public static Algorithm none() {
         return new NoneAlgorithm();
+    }
+
+    public static Algorithm getContentEncryptionAlg(String algorithm, CipherParams cipherParams) {
+        if("A128CBC-HS256".equals(algorithm)) {
+            return A128CBC_HS256(cipherParams);
+        } else if("A192CBC-HS384".equals(algorithm)) {
+            return A192CBC_HS384(cipherParams);
+        } else if("A256CBC-HS512".equals(algorithm)) {
+            return A256BC_HS512(cipherParams);
+        } else if("A128GCM".equals(algorithm)) {
+            return A128GCM(cipherParams);
+        } else if("A192GCM".equals(algorithm)) {
+            return A192GCM(cipherParams);
+        } else if("A256GCM".equals(algorithm)) {
+            return A256GCM(cipherParams);
+        } else {
+            return null;
+        }
     }
 
     protected Algorithm(String name, String description) {
@@ -373,4 +481,22 @@ public abstract class Algorithm {
      * @throws SignatureGenerationException if the Key is invalid.
      */
     public abstract byte[] sign(byte[] contentBytes) throws SignatureGenerationException;
+
+
+    public byte[] encrypt(byte[] contentBytes)throws EncryptionException {
+        return null;
+    }
+
+    public byte[] decrypt(byte[] cipherText) throws DecryptionException {
+        return null;
+    }
+
+    public AuthenticatedCipherText encrypt(byte[] contentBytes, byte[] aad) throws EncryptionException {
+        return null;
+    }
+
+    public byte[] decrypt(byte[] cipherText, byte[] authTag, byte[] aad) throws DecryptionException {
+        return null;
+    }
+
 }

@@ -13,6 +13,13 @@ public interface Header {
     String getAlgorithm();
 
     /**
+     * Getter for the Algorithm "enc" claim defined in the JWT's Header. If the claim is missing it will return null.
+     *
+     * @return the Algorithm defined or null.
+     */
+    String getEncAlgorithm();
+
+    /**
      * Getter for the Type "typ" claim defined in the JWT's Header. If the claim is missing it will return null.
      *
      * @return the Type defined or null.

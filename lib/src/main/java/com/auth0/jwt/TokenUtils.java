@@ -17,7 +17,7 @@ abstract class TokenUtils {
             //Tokens with alg='none' have empty String as Signature.
             parts = new String[]{parts[0], parts[1], ""};
         }
-        if (parts.length != 3) {
+        if (parts.length != 3 && parts.length != 5) {
             throw new JWTDecodeException(String.format("The token was expected to have 3 parts, but got %s.", parts.length));
         }
         return parts;

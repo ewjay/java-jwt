@@ -5,6 +5,7 @@ public interface PublicClaims {
 
     //Header
     String ALGORITHM = "alg";
+    String ENC_ALGORITHM = "enc";
     String CONTENT_TYPE = "cty";
     String TYPE = "typ";
     String KEY_ID = "kid";

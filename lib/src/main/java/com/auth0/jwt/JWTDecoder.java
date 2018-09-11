@@ -1,5 +1,8 @@
 package com.auth0.jwt;
 
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.algorithms.CipherParams;
+import com.auth0.jwt.exceptions.DecryptionException;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.impl.JWTParser;
 import com.auth0.jwt.interfaces.Claim;
@@ -7,8 +10,10 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.Header;
 import com.auth0.jwt.interfaces.Payload;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.binary.StringUtils;
 
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -21,16 +26,26 @@ final class JWTDecoder implements DecodedJWT {
 
     private final String[] parts;
     private final Header header;
-    private final Payload payload;
+    private Payload payload;
+    private final boolean isJWE;
 
     JWTDecoder(String jwt) throws JWTDecodeException {
         parts = TokenUtils.splitToken(jwt);
+        if(parts.length == 5) {
+            isJWE = true;
+        } else {
+            isJWE = false;
+        }
         final JWTParser converter = new JWTParser();
         String headerJson;
         String payloadJson;
         try {
             headerJson = StringUtils.newStringUtf8(Base64.decodeBase64(parts[0]));
-            payloadJson = StringUtils.newStringUtf8(Base64.decodeBase64(parts[1]));
+            if(!isJWE) {
+                payloadJson = StringUtils.newStringUtf8(Base64.decodeBase64(parts[1]));
+            } else {
+                payloadJson = "{}"; // JWE is encrypted so use empty JSON
+            }
         } catch (NullPointerException e) {
             throw new JWTDecodeException("The UTF-8 Charset isn't initialized.", e);
         }
@@ -39,8 +54,76 @@ final class JWTDecoder implements DecodedJWT {
     }
 
     @Override
+    public DecodedJWT decrypt(Algorithm algorithm) throws DecryptionException {
+        String algAlgId = getAlgorithm();
+        if(!getAlgorithm().equals(algorithm.getName())) {
+            throw new DecryptionException(algorithm, "alg Algorithm mismatch");
+        }
+
+        byte[] encryptedKey = Base64.decodeBase64(getKey());
+        byte[] iv = Base64.decodeBase64(getIV());
+        byte[] tag = Base64.decodeBase64(getAuthenticationTag());
+        byte[] headerBytes = getHeader().getBytes();
+        byte[] cipherText = Base64.decodeBase64(getCipherText());
+
+        byte[] decryptedKey = algorithm.decrypt(encryptedKey);
+
+        System.out.printf("CMK = %s\n", Hex.encodeHexString(decryptedKey));
+
+        List<String> aeshsAlgs = Arrays.asList("A128CBC-HS256", "A192CBC-HS384", "A256CBC-HS512");
+        List<String> aesgcmAlgs = Arrays.asList("A128GCM", "A192GCM", "A256GCM");
+        if(aeshsAlgs.contains(getEncAlgorithm())) {
+
+            int mid = decryptedKey.length / 2;
+            byte[] encKey = Arrays.copyOfRange(decryptedKey, mid, decryptedKey.length);
+            byte[] macKey = Arrays.copyOfRange(decryptedKey, 0, mid);
+            System.out.printf("CMK = %s\n", Hex.encodeHexString(decryptedKey));
+            System.out.printf("CEK = %s\n", Hex.encodeHexString(encKey));
+            System.out.printf("CIK = %s\n", Hex.encodeHexString(macKey));
+            CipherParams cipherParams = new CipherParams(encKey, macKey, iv);
+            Algorithm encAlg = Algorithm.getContentEncryptionAlg(getEncAlgorithm(), cipherParams);
+            byte[] plainText = encAlg.decrypt(cipherText, tag, headerBytes);
+            String payloadStr = StringUtils.newStringUtf8(plainText);
+            if("JWT".equals(getContentType())) {
+                return JWT.decode(payloadStr);
+            } else {
+                System.out.println(payloadStr);
+                final JWTParser converter = new JWTParser();
+                payload = converter.parsePayload(payloadStr);
+                Map<String, Claim> claims = payload.getClaims();
+                for (Map.Entry<String, Claim> entry : claims.entrySet()) {
+                    System.out.printf("%s : %s\n", entry.getKey(), entry.getValue().asString());
+                }
+            }
+        } else if (aesgcmAlgs.contains(getEncAlgorithm())) {
+            CipherParams cipherParams = new CipherParams(decryptedKey, iv);
+            Algorithm encAlg = Algorithm.getContentEncryptionAlg(getEncAlgorithm(), cipherParams);
+            byte[] plainText = encAlg.decrypt(cipherText, tag, headerBytes);
+            String payloadStr = StringUtils.newStringUtf8(plainText);
+            if("JWT".equals(getContentType())) {
+                return JWT.decode(payloadStr);
+            } else {
+                System.out.println(payloadStr);
+                final JWTParser converter = new JWTParser();
+                payload = converter.parsePayload(payloadStr);
+                Map<String, Claim> claims = payload.getClaims();
+                for (Map.Entry<String, Claim> entry : claims.entrySet()) {
+                    System.out.printf("%s : %s\n", entry.getKey(), entry.getValue().asString());
+                }
+            }
+
+        }
+        return null;
+    }
+
+    @Override
     public String getAlgorithm() {
         return header.getAlgorithm();
+    }
+
+    @Override
+    public String getEncAlgorithm() {
+        return header.getEncAlgorithm();
     }
 
     @Override
@@ -109,22 +192,76 @@ final class JWTDecoder implements DecodedJWT {
     }
 
     @Override
+    public boolean isJWE() {
+        return isJWE;
+    }
+
+    @Override
     public String getHeader() {
         return parts[0];
     }
 
     @Override
     public String getPayload() {
-        return parts[1];
+        if(!isJWE) {
+            return parts[1];
+        }
+        else {
+            return null;
+        }
     }
 
     @Override
     public String getSignature() {
-        return parts[2];
+        if(!isJWE) {
+            return parts[2];
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public String getKey() {
+        if(isJWE) {
+            return parts[1];
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public String getIV() {
+        if(isJWE) {
+            return parts[2];
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public String getCipherText() {
+        if(isJWE) {
+            return parts[3];
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public String getAuthenticationTag() {
+        if(isJWE) {
+            return parts[4];
+        } else {
+            return null;
+        }
     }
 
     @Override
     public String getToken() {
-        return String.format("%s.%s.%s", parts[0], parts[1], parts[2]);
+        if(isJWE) {
+            return String.format("%s.%s.%s.%s.%s", parts[0], parts[1], parts[2], parts[3], parts[4]);
+        } else {
+            return String.format("%s.%s.%s", parts[0], parts[1], parts[2]);
+        }
     }
 }

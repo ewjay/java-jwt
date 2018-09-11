@@ -29,10 +29,11 @@ class HeaderDeserializer extends StdDeserializer<BasicHeader> {
         }
 
         String algorithm = getString(tree, PublicClaims.ALGORITHM);
+        String encAlgorithm = getString(tree, PublicClaims.ENC_ALGORITHM);
         String type = getString(tree, PublicClaims.TYPE);
         String contentType = getString(tree, PublicClaims.CONTENT_TYPE);
         String keyId = getString(tree, PublicClaims.KEY_ID);
-        return new BasicHeader(algorithm, type, contentType, keyId, tree);
+        return new BasicHeader(algorithm, encAlgorithm, type, contentType, keyId, tree);
     }
 
     String getString(Map<String, JsonNode> tree, String claimName) {

@@ -1,8 +1,15 @@
 package com.auth0.jwt.algorithms;
 
+import org.apache.commons.codec.binary.Base64;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.Mac;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
+import java.security.spec.AlgorithmParameterSpec;
 
 class CryptoHelper {
 
@@ -28,5 +35,37 @@ class CryptoHelper {
         s.initSign(privateKey);
         s.update(contentBytes);
         return s.sign();
+    }
+
+    byte[] encrypt(String algorithm, PublicKey publicKey, byte[] contentBytes, byte[] iv, byte[] aad) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Cipher cipher = Cipher.getInstance(algorithm);
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+        return cipher.doFinal(contentBytes);
+    }
+
+    byte[] decrypt(String algorithm, PrivateKey privateKey, byte[] cipherText, byte[] iv, byte[] aad) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException{
+        Cipher cipher = Cipher.getInstance(algorithm);
+        cipher.init(Cipher.DECRYPT_MODE, privateKey);
+        return cipher.doFinal(cipherText);
+    }
+
+    byte[] encrypt(String algorithm, Key key, AlgorithmParameterSpec algorithmParameterSpec, byte[] contentBytes, byte[] aad)
+        throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException {
+        Cipher cipher = Cipher.getInstance(algorithm);
+        cipher.init(Cipher.ENCRYPT_MODE, key, algorithmParameterSpec);
+        if(aad != null) {
+            cipher.updateAAD(aad);
+        }
+        return cipher.doFinal(contentBytes);
+    }
+
+    byte[] decrypt(String algorithm, Key key, AlgorithmParameterSpec algorithmParameterSpec, byte[] cipherText, byte[] aad)
+        throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException {
+        Cipher cipher = Cipher.getInstance(algorithm);
+        cipher.init(Cipher.DECRYPT_MODE, key, algorithmParameterSpec);
+        if(aad != null) {
+            cipher.updateAAD(aad);
+        }
+        return cipher.doFinal(cipherText);
     }
 }

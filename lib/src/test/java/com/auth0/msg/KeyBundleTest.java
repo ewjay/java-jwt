@@ -6,14 +6,11 @@ import com.auth0.jwt.exceptions.oicmsg_exceptions.JWKException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.UnknownKeyType;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.apache.commons.codec.binary.Base64;
-import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.Rule;
 import org.junit.rules.ExpectedException;
@@ -26,8 +23,6 @@ import java.nio.file.Paths;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +48,6 @@ public class KeyBundleTest {
     public void testCreatStoreRSAKeyPair() throws Exception {
         Path currentRelativePath = Paths.get("");
         String s = currentRelativePath.toAbsolutePath().toString();
-        System.out.println("Current relative path is: " + s);
 
         String filename = "testkey";
         String privateFilename = s + File.separator + filename;
@@ -66,8 +60,8 @@ public class KeyBundleTest {
         File publicFile = new File(publicFilename);
         Assert.assertTrue(publicFile.exists());
         Assert.assertTrue(privateFile.exists());
-        PublicKey publicKey = KeyUtils.readRSAPublicKeyFromFile(publicFilename);
-        PrivateKey privateKey = KeyUtils.readRSAPrivateKeyFromFile(privateFilename);
+        PublicKey publicKey = KeyUtils.getRSAPublicKeyFromFile(publicFilename);
+        PrivateKey privateKey = KeyUtils.getRSAPrivateKeyFromFile(privateFilename);
         Assert.assertNotNull(publicKey);
         Assert.assertTrue(publicKey instanceof PublicKey);
 
@@ -393,8 +387,10 @@ public class KeyBundleTest {
         List<KeyBundle> keyBundleList = new ArrayList<>();
         keyBundleList.add(keyBundle1);
         keyBundleList.add(keyBundle2);
-        keyBundle1.dumpJwks(keyBundleList, "", false);
-
+        KeyBundle.dumpJwks(keyBundleList, "jwks_combo", false);
+        KeyBundle newKeyBundle = new KeyBundle("file://jwks_combo", "jwks", null);
+        Assert.assertEquals(2, newKeyBundle.getLength());
+        Assert.assertEquals(2, newKeyBundle.get("rsa").size());
 
     }
 

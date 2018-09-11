@@ -54,7 +54,7 @@ public final class JWTVerifier {
             this.defaultLeeway = 0;
         }
 
-        /**
+       /**
          * Require a specific Issuer ("iss") claim.
          *
          * @param issuer the required Issuer value
@@ -347,11 +347,20 @@ public final class JWTVerifier {
      * @throws SignatureVerificationException if the signature is invalid.
      * @throws TokenExpiredException          if the token has expired.
      * @throws InvalidClaimException          if a claim contained a different value than the expected one.
+     * @throws DecryptionException            if JWE cannot be decrypted.
      */
     public DecodedJWT verify(String token) throws JWTVerificationException {
         DecodedJWT jwt = JWT.decode(token);
         verifyAlgorithm(jwt, algorithm);
-        algorithm.verify(jwt);
+        if(jwt.isJWE()) {
+            if("JWT".equals(jwt.getContentType())) {
+                throw new JWTVerificationException("Unable to verify embedded JWT in JWE");
+            } else {
+                jwt.decrypt(algorithm);
+            }
+        } else {
+            algorithm.verify(jwt);
+        }
         verifyClaims(jwt, claims);
         return jwt;
     }
