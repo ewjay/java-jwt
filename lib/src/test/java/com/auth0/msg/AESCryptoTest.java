@@ -283,16 +283,6 @@ public class AESCryptoTest {
             }
         }
 
-
-//        DecodedJWT jwt = JWT.require(rsaTestAlg).withIssuer("Bob").withAudience("John").withSubject("Alice").acceptIssuedAt(1536691903).acceptExpiresAt(1536692203).acceptLeeway(100)
-//            .build()
-//            .verify(jwes[1]);
-//        Map<String, com.auth0.jwt.interfaces.Claim> claims = jwt.getClaims();
-//        for (Map.Entry<String, Claim> entry : claims.entrySet()) {
-//            System.out.printf("%s : %s\n", entry.getKey(), entry.getValue().asString());
-//        }
-
-
     }
 
 

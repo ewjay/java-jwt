@@ -83,7 +83,7 @@ public abstract class Utils {
      * @param s string to check
      * @return boolean whether string is null or empty
      */
-    static boolean isNullOrEmpty(final String s) {
+    public static boolean isNullOrEmpty(final String s) {
         return s == null || s.length() == 0;
     }
 

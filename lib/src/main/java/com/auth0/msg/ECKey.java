@@ -253,6 +253,16 @@ public class ECKey extends Key{
              this.d = d;
              return this;
          }
+
+         /**
+          * Create a new ECKey instance using the builder's values
+          * @return newly created ECKey instance
+          * @throws JWKException
+          */
+         public ECKey build()
+             throws HeaderError, JWKException, ValueError, SerializationNotPossible {
+             return new ECKey(alg, use, kid, key, crv, x, y, d, args);
+         }
      }
 
     /**

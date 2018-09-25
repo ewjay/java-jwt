@@ -1,9 +1,13 @@
 package com.auth0.jwt;
 
+import com.auth0.jwt.algorithms.AESKeyWrapAlgorithm;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.algorithms.CipherParams;
+import com.auth0.jwt.algorithms.ECDHESAlgorithm;
+import com.auth0.jwt.algorithms.ECDHESKeyWrapAlgorithm;
 import com.auth0.jwt.exceptions.DecryptionException;
 import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.exceptions.KeyAgreementException;
 import com.auth0.jwt.impl.JWTParser;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
@@ -61,12 +65,25 @@ final class JWTDecoder implements DecodedJWT {
         }
 
         byte[] encryptedKey = Base64.decodeBase64(getKey());
+
         byte[] iv = Base64.decodeBase64(getIV());
         byte[] tag = Base64.decodeBase64(getAuthenticationTag());
         byte[] headerBytes = getHeader().getBytes();
         byte[] cipherText = Base64.decodeBase64(getCipherText());
+        byte[] decryptedKey = new byte[0];
 
-        byte[] decryptedKey = algorithm.decrypt(encryptedKey);
+        if(algorithm instanceof ECDHESAlgorithm && !(algorithm instanceof ECDHESKeyWrapAlgorithm)) {
+            try {
+                decryptedKey = algorithm.generateDerivedKey();
+            } catch (KeyAgreementException e) {
+                throw new DecryptionException(algorithm, e);
+            }
+        } else if(algorithm instanceof ECDHESKeyWrapAlgorithm ||
+            algorithm instanceof AESKeyWrapAlgorithm) {
+            decryptedKey = algorithm.unwrap(encryptedKey);
+        } else {
+            decryptedKey = algorithm.decrypt(encryptedKey);
+        }
 
         System.out.printf("CMK = %s\n", Hex.encodeHexString(decryptedKey));
 
@@ -77,7 +94,6 @@ final class JWTDecoder implements DecodedJWT {
             int mid = decryptedKey.length / 2;
             byte[] encKey = Arrays.copyOfRange(decryptedKey, mid, decryptedKey.length);
             byte[] macKey = Arrays.copyOfRange(decryptedKey, 0, mid);
-            System.out.printf("CMK = %s\n", Hex.encodeHexString(decryptedKey));
             System.out.printf("CEK = %s\n", Hex.encodeHexString(encKey));
             System.out.printf("CIK = %s\n", Hex.encodeHexString(macKey));
             CipherParams cipherParams = new CipherParams(encKey, macKey, iv);

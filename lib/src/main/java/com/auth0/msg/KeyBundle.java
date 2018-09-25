@@ -23,11 +23,9 @@ import org.json.simple.parser.ParseException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.security.KeyException;
 import java.security.KeyPair;
 import java.util.ArrayList;
@@ -276,8 +274,7 @@ public class KeyBundle {
                         continue;
                     this.keys.add(keyInstance);
                 }
-                catch(Exception | SerializationNotPossible e) {
-                    System.out.println(e.toString());
+                catch(Exception e) {
                 }
             }
         }

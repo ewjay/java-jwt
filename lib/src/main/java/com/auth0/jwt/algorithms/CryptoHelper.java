@@ -5,6 +5,7 @@ import org.apache.commons.codec.binary.Base64;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyAgreement;
 import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
@@ -68,4 +69,25 @@ class CryptoHelper {
         }
         return cipher.doFinal(cipherText);
     }
+
+    byte[] generateAgreementKey(String algorithm, Key privateKey, Key publicKey) throws  NoSuchAlgorithmException, InvalidKeyException{
+        KeyAgreement keyAgreement = KeyAgreement.getInstance(algorithm);
+        keyAgreement.init(privateKey);
+        keyAgreement.doPhase(publicKey, true);
+        return keyAgreement.generateSecret();
+    }
+
+    byte[] wrap(String algorithm, Key keywrapKey, byte[] contentBytes) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException {
+        Cipher cipher = Cipher.getInstance(algorithm);
+        cipher.init(Cipher.WRAP_MODE, keywrapKey);
+        return cipher.wrap(new SecretKeySpec(contentBytes, "AES"));
+    }
+
+    byte[] unwrap(String algorithm, Key keywrapKey, byte[] cipherText) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
+        Cipher cipher = Cipher.getInstance(algorithm);
+        cipher.init(Cipher.UNWRAP_MODE, keywrapKey);
+        return cipher.unwrap(cipherText, "AESWrap", Cipher.SECRET_KEY).getEncoded();
+    }
+
+
 }

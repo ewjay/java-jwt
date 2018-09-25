@@ -573,7 +573,7 @@ public abstract class Key {
 
 
     /**
-     * Gets the interal java.security.Key that represents this Key
+     * Gets the internal java.security.Key that represents this Key
      * @param isPrivate whether to get the private key or not
      * @return java.security.Key that backs this object
      * @throws ValueError

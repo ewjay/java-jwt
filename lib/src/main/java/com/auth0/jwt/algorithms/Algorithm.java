@@ -2,6 +2,7 @@ package com.auth0.jwt.algorithms;
 
 import com.auth0.jwt.exceptions.DecryptionException;
 import com.auth0.jwt.exceptions.EncryptionException;
+import com.auth0.jwt.exceptions.KeyAgreementException;
 import com.auth0.jwt.exceptions.SignatureGenerationException;
 import com.auth0.jwt.exceptions.SignatureVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
@@ -10,6 +11,8 @@ import com.auth0.jwt.interfaces.RSAKeyProvider;
 
 import java.io.UnsupportedEncodingException;
 import java.security.interfaces.*;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * The Algorithm class represents an algorithm to be used in the Signing or Verification process of a Token.
@@ -390,6 +393,60 @@ public abstract class Algorithm {
         return new AESGCMAlgorithm("A256GCM", "AES/GCM/NoPadding", cipherParams);
     }
 
+    public static Algorithm ECDH_ES(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+        return new ECDHESAlgorithm("ECDH-ES", "ECDH", senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
+    }
+
+    public static Algorithm ECDH_ES(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+        return ECDH_ES(ECDSAAlgorithm.providerForKeys(senderPublicKey, senderPrivateKey), ECDSAAlgorithm.providerForKeys(receiverPublicKey, null), partyUInfo, partyVInfo, algId, keydataLen);
+    }
+
+    public static Algorithm ECDH_ES(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId) throws  IllegalArgumentException {
+        int keydataLen = getAlgorithmKeydataLen(algId);
+        return new ECDHESAlgorithm("ECDH-ES", "ECDH", senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
+    }
+
+    public static Algorithm ECDH_ES(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId) throws  IllegalArgumentException {
+        int keydataLen = getAlgorithmKeydataLen(algId);
+        return ECDH_ES(ECDSAAlgorithm.providerForKeys(senderPublicKey, senderPrivateKey), ECDSAAlgorithm.providerForKeys(receiverPublicKey, null), partyUInfo, partyVInfo, algId, keydataLen);
+    }
+
+    public static Algorithm ECDH_ES_A128KW(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+        return new ECDHESKeyWrapAlgorithm("ECDH-ES+A128KW", "ECDH", senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
+    }
+
+    public static Algorithm ECDH_ES_A128KW(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+        return ECDH_ES_A128KW(ECDSAAlgorithm.providerForKeys(senderPublicKey, senderPrivateKey), ECDSAAlgorithm.providerForKeys(receiverPublicKey, null), partyUInfo, partyVInfo, algId, keydataLen);
+    }
+
+    public static Algorithm ECDH_ES_A192KW(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+        return new ECDHESKeyWrapAlgorithm("ECDH-ES+A192KW", "ECDH", senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
+    }
+
+    public static Algorithm ECDH_ES_A192KW(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+        return ECDH_ES_A192KW(ECDSAAlgorithm.providerForKeys(senderPublicKey, senderPrivateKey), ECDSAAlgorithm.providerForKeys(receiverPublicKey, null), partyUInfo, partyVInfo, algId, keydataLen);
+    }
+
+    public static Algorithm ECDH_ES_A256KW(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+        return new ECDHESKeyWrapAlgorithm("ECDH-ES+A256KW", "ECDH", senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
+    }
+
+    public static Algorithm ECDH_ES_A256KW(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+        return ECDH_ES_A256KW(ECDSAAlgorithm.providerForKeys(senderPublicKey, senderPrivateKey), ECDSAAlgorithm.providerForKeys(receiverPublicKey, null), partyUInfo, partyVInfo, algId, keydataLen);
+    }
+
+    public static Algorithm AES128Keywrap(byte[] keywrapKey) throws  IllegalArgumentException {
+        return new AESKeyWrapAlgorithm("A128KW", "AESWrap", keywrapKey);
+    }
+
+    public static Algorithm AES192Keywrap(byte[] keywrapKey) throws  IllegalArgumentException {
+        return new AESKeyWrapAlgorithm("A192KW", "AESWrap", keywrapKey);
+    }
+
+    public static Algorithm AES256Keywrap(byte[] keywrapKey) throws  IllegalArgumentException {
+        return new AESKeyWrapAlgorithm("A256KW", "AESWrap", keywrapKey);
+    }
+
     /**
      * Creates a new Algorithm instance using SHA512withECDSA. Tokens specify this as "ES512".
      *
@@ -410,6 +467,41 @@ public abstract class Algorithm {
         return new NoneAlgorithm();
     }
 
+    /**
+     * Gets the number of bits required for the key for the specified algorithm
+     * @param alg JWA algorithm string
+     * @return number of bits required
+     */
+    public static int getAlgorithmKeydataLen(String alg) {
+        int requiredLen = 0;
+        if(("A128CBC-HS256").equals(alg)) {
+            requiredLen = 256;
+        } else if("A192CBC-HS384".equals(alg)) {
+            requiredLen = 384;
+        } else if("A256CBC-HS512".equals(alg)) {
+            requiredLen = 512;
+        } else if("A128GCM".equals(alg)) {
+            requiredLen = 128;
+        } else if("A192GCM".equals(alg)) {
+            requiredLen = 192;
+        } else if("A256GCM".equals(alg)) {
+            requiredLen = 256;
+        } else if("A128KW".equals(alg)) {
+            requiredLen = 128;
+        } else if("A192KW".equals(alg)) {
+            requiredLen = 192;
+        } else if("A256KW".equals(alg)) {
+            requiredLen = 256;
+        } else if("ECDH-ES+A128KW".equals(alg)) {
+            requiredLen = 128;
+        } else if("ECDH-ES+A192KW".equals(alg)) {
+            requiredLen = 192;
+        } else if("ECDH-ES+A256KW".equals(alg)) {
+            requiredLen = 256;
+        }
+        return requiredLen;
+    }
+
     public static Algorithm getContentEncryptionAlg(String algorithm, CipherParams cipherParams) {
         if("A128CBC-HS256".equals(algorithm)) {
             return A128CBC_HS256(cipherParams);
@@ -426,6 +518,35 @@ public abstract class Algorithm {
         } else {
             return null;
         }
+    }
+
+    public static Algorithm getKeyWrapAlg(String algorithm, byte[] key) {
+        if("A128KW".equals(algorithm)) {
+            return AES128Keywrap(key);
+        } else if("A192KW".equals(algorithm)) {
+            return AES192Keywrap(key);
+        } else if("A256KW".equals(algorithm)) {
+            return AES256Keywrap(key);
+        } else {
+            return null;
+        }
+    }
+
+    public static Algorithm getECDHES_KeyWrapAlg(String algorithm, ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) {
+        if("ECDH-ES+A128KW".equals(algorithm)) {
+            return ECDH_ES_A128KW(senderPrivateKey, senderPublicKey, receiverPublicKey, partyUInfo, partyVInfo, algId, keydataLen);
+        } else if("ECDH-ES+A192KW".equals(algorithm)) {
+            return ECDH_ES_A192KW(senderPrivateKey, senderPublicKey, receiverPublicKey, partyUInfo, partyVInfo, algId, keydataLen);
+        } else if("ECDH-ES+A256KW".equals(algorithm)) {
+            return ECDH_ES_A256KW(senderPrivateKey, senderPublicKey, receiverPublicKey, partyUInfo, partyVInfo, algId, keydataLen);
+        } else {
+            return null;
+        }
+    }
+
+    public static Algorithm getECDHES_KeyWrapAlg(String algorithm, ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId) {
+        int keydataLen = getAlgorithmKeydataLen(algId);
+        return getECDHES_KeyWrapAlg(algorithm, senderPrivateKey, senderPublicKey, receiverPublicKey, partyUInfo, partyVInfo, algId, keydataLen);
     }
 
     protected Algorithm(String name, String description) {
@@ -484,19 +605,40 @@ public abstract class Algorithm {
 
 
     public byte[] encrypt(byte[] contentBytes)throws EncryptionException {
-        return null;
+        throw new EncryptionException(this, "Encryption is not supported");
     }
 
     public byte[] decrypt(byte[] cipherText) throws DecryptionException {
-        return null;
+        throw new DecryptionException(this, "Decryption is not supported");
     }
 
     public AuthenticatedCipherText encrypt(byte[] contentBytes, byte[] aad) throws EncryptionException {
-        return null;
+        throw new EncryptionException(this, "Encryption is not supported");
     }
 
     public byte[] decrypt(byte[] cipherText, byte[] authTag, byte[] aad) throws DecryptionException {
-        return null;
+        throw new DecryptionException(this, "Decryption is not supported");
+    }
+
+    public byte[] generateAgreementKey() throws KeyAgreementException {
+        throw new KeyAgreementException(this, "Key agreement is not supported");
+    }
+
+    public byte[] generateDerivedKey() throws KeyAgreementException {
+        throw new KeyAgreementException(this, "Derived key agreement is not supported");
+    }
+
+
+    public byte[] wrap(byte[] contentBytes)throws EncryptionException {
+        throw new EncryptionException(this, "Key Wrap is not supported");
+    }
+
+    public byte[] unwrap(byte[] cipherText) throws DecryptionException {
+        throw new DecryptionException(this, "Key Unwrap is not supported");
+    }
+
+    public Map<String, Object> getPubInfo() {
+        return Collections.emptyMap();
     }
 
 }

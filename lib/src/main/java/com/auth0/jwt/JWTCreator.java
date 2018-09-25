@@ -2,11 +2,15 @@ package com.auth0.jwt;
 
 import com.auth0.jwt.algorithms.AESGCMAlgorithm;
 import com.auth0.jwt.algorithms.AESHSAlgorithm;
+import com.auth0.jwt.algorithms.AESKeyWrapAlgorithm;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.algorithms.AuthenticatedCipherText;
 import com.auth0.jwt.algorithms.CipherParams;
+import com.auth0.jwt.algorithms.ECDHESAlgorithm;
+import com.auth0.jwt.algorithms.ECDHESKeyWrapAlgorithm;
 import com.auth0.jwt.exceptions.EncryptionException;
 import com.auth0.jwt.exceptions.JWTCreationException;
+import com.auth0.jwt.exceptions.KeyAgreementException;
 import com.auth0.jwt.exceptions.SignatureGenerationException;
 import com.auth0.jwt.impl.ClaimsHolder;
 import com.auth0.jwt.impl.PayloadSerializer;
@@ -19,6 +23,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -342,6 +347,7 @@ public final class JWTCreator {
             headerClaims.put(PublicClaims.ALGORITHM, algAlgorithm.getName());
             headerClaims.put(PublicClaims.ENC_ALGORITHM, encAlgorithm.getName());
             headerClaims.put(PublicClaims.TYPE, "JWT");
+            headerClaims.putAll(algAlgorithm.getPubInfo());
             return new JWTCreator(algAlgorithm, encAlgorithm, headerClaims, payloadClaims).encrypt();
         }
 
@@ -381,47 +387,50 @@ public final class JWTCreator {
           BASE64URL(JWE Ciphertext) || '.' ||
           BASE64URL(JWE Authentication Tag)
          */
+
+        byte[] encryptedKey = new byte[0];
+        String encodedKey = "";
+        AESHSAlgorithm aeshsAlgorithm;
+        AESGCMAlgorithm aesgcmAlgorithm;
+        CipherParams cipherParams;
         if(encAlgorithm instanceof AESHSAlgorithm) {
-            AESHSAlgorithm aeshsAlgorithm = (AESHSAlgorithm) encAlgorithm;
-            CipherParams cipherParams = aeshsAlgorithm.getCipherParams();
-            System.out.println("Data : " + Hex.encodeHexString(payloadJson.getBytes()));
-            System.out.println("IV : " + Hex.encodeHexString(cipherParams.getIv()));
-            System.out.println("CMK : " + Hex.encodeHexString(cipherParams.getMacEncKey()));
-            byte[] encryptedKey = algorithm.encrypt(cipherParams.getMacEncKey());
-
-            System.out.println("Encrypted CMK : " + Hex.encodeHexString(encryptedKey));
-
-            String encodedKey = Base64.encodeBase64URLSafeString(encryptedKey);
-            String encodeIV = Base64.encodeBase64URLSafeString(cipherParams.getIv());
-            AuthenticatedCipherText authenticatedCipherText = encAlgorithm.encrypt(payloadJson.getBytes(StandardCharsets.UTF_8), header.getBytes());
-            System.out.println("CipherText : " + Hex.encodeHexString(authenticatedCipherText.getCipherText()));
-            System.out.println("Tag : " + Hex.encodeHexString(authenticatedCipherText.getTag()));
-
-            String encodeCipherText = Base64.encodeBase64URLSafeString(authenticatedCipherText.getCipherText());
-            String encodedTag = Base64.encodeBase64URLSafeString(authenticatedCipherText.getTag());
-            return String.format("%s.%s.%s.%s.%s", header, encodedKey, encodeIV, encodeCipherText, encodedTag);
-        } else if(encAlgorithm instanceof AESGCMAlgorithm) {
-            AESGCMAlgorithm aesgcmAlgorithm = (AESGCMAlgorithm) encAlgorithm;
-            CipherParams cipherParams = aesgcmAlgorithm.getCipherParams();
-            System.out.println("Data : " + Hex.encodeHexString(payloadJson.getBytes()));
-            System.out.println("IV : " + Hex.encodeHexString(cipherParams.getIv()));
-            System.out.println("Key : " + Hex.encodeHexString(cipherParams.getMacEncKey()));
-            byte[] encryptedKey = algorithm.encrypt(cipherParams.getMacEncKey());
-
-            System.out.println("Encrypted CMK : " + Hex.encodeHexString(encryptedKey));
-
-            String encodedKey = Base64.encodeBase64URLSafeString(encryptedKey);
-            String encodeIV = Base64.encodeBase64URLSafeString(cipherParams.getIv());
-            AuthenticatedCipherText authenticatedCipherText = encAlgorithm.encrypt(payloadJson.getBytes(StandardCharsets.UTF_8), header.getBytes());
-            System.out.println("CipherText : " + Hex.encodeHexString(authenticatedCipherText.getCipherText()));
-            System.out.println("Tag : " + Hex.encodeHexString(authenticatedCipherText.getTag()));
-            String encodeCipherText = Base64.encodeBase64URLSafeString(authenticatedCipherText.getCipherText());
-            String encodedTag = Base64.encodeBase64URLSafeString(authenticatedCipherText.getTag());
-            return String.format("%s.%s.%s.%s.%s", header, encodedKey, encodeIV, encodeCipherText, encodedTag);
-
+            aeshsAlgorithm = (AESHSAlgorithm) encAlgorithm;
+            // cipherParams should hold values for keyagreement algs also
+            cipherParams = aeshsAlgorithm.getCipherParams();
+        } else if(encAlgorithm instanceof  AESGCMAlgorithm) {
+            aesgcmAlgorithm = (AESGCMAlgorithm) encAlgorithm;
+            cipherParams = aesgcmAlgorithm.getCipherParams();
         } else {
-            throw new EncryptionException(encAlgorithm, new Exception("Unexpected Enc Algorithm"));
+            throw new EncryptionException(encAlgorithm, "Unsupported enc algorithm");
         }
+        if(algorithm instanceof ECDHESAlgorithm && !(algorithm instanceof ECDHESKeyWrapAlgorithm)) {
+            encodedKey = "";
+        } else {
+            // key encryption or key wrap
+            if(algorithm instanceof AESKeyWrapAlgorithm ||
+                algorithm instanceof ECDHESKeyWrapAlgorithm) {
+                encryptedKey = algorithm.wrap(cipherParams.getMacEncKey());
+            } else {
+                encryptedKey = algorithm.encrypt(cipherParams.getMacEncKey());
+            }
+            encodedKey = Base64.encodeBase64URLSafeString(encryptedKey);
+        }
+        System.out.println("Data : " + Hex.encodeHexString(payloadJson.getBytes()));
+        System.out.println("IV : " + Hex.encodeHexString(cipherParams.getIv()));
+        System.out.println("CMK : " + Hex.encodeHexString(cipherParams.getMacEncKey()));
+        System.out.println("Encrypted CMK : " + Hex.encodeHexString(encryptedKey));
+        System.out.println("Encode key : " + encodedKey);
+
+        String encodeIV = Base64.encodeBase64URLSafeString(cipherParams.getIv());
+        AuthenticatedCipherText authenticatedCipherText = encAlgorithm.encrypt(payloadJson.getBytes(StandardCharsets.UTF_8), header.getBytes());
+        System.out.println("CipherText : " + Hex.encodeHexString(authenticatedCipherText.getCipherText()));
+        System.out.println("Tag : " + Hex.encodeHexString(authenticatedCipherText.getTag()));
+
+        String encodeCipherText = Base64.encodeBase64URLSafeString(authenticatedCipherText.getCipherText());
+        String encodedTag = Base64.encodeBase64URLSafeString(authenticatedCipherText.getTag());
+        return String.format("%s.%s.%s.%s.%s", header, encodedKey, encodeIV, encodeCipherText, encodedTag);
+
+
     }
 
 }
