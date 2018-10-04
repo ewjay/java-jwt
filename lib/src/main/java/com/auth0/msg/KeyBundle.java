@@ -11,10 +11,8 @@ import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
 import com.google.common.collect.ImmutableMap;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -360,8 +358,7 @@ public class KeyBundle {
         int statusCode;
         HttpResponse response;
         try {
-            HttpClient httpClient = HttpClientBuilder.create().build();
-            HttpClient httpclient = new DefaultHttpClient();
+            CloseableHttpClient httpclient = HttpClientUtil.instance();
             HttpGet httpget = new HttpGet(this.source);
             response = httpclient.execute(httpget);
             statusCode = response.getStatusLine().getStatusCode();
