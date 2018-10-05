@@ -388,8 +388,9 @@ public final class JWTCreator {
           BASE64URL(JWE Authentication Tag)
          */
 
+        /*
         byte[] encryptedKey = new byte[0];
-        String encodedKey = "";
+        String encodedKey;
         AESHSAlgorithm aeshsAlgorithm;
         AESGCMAlgorithm aesgcmAlgorithm;
         CipherParams cipherParams;
@@ -415,22 +416,15 @@ public final class JWTCreator {
             }
             encodedKey = Base64.encodeBase64URLSafeString(encryptedKey);
         }
-        System.out.println("Data : " + Hex.encodeHexString(payloadJson.getBytes()));
-        System.out.println("IV : " + Hex.encodeHexString(cipherParams.getIv()));
-        System.out.println("CMK : " + Hex.encodeHexString(cipherParams.getMacEncKey()));
-        System.out.println("Encrypted CMK : " + Hex.encodeHexString(encryptedKey));
-        System.out.println("Encode key : " + encodedKey);
-
         String encodeIV = Base64.encodeBase64URLSafeString(cipherParams.getIv());
-        AuthenticatedCipherText authenticatedCipherText = encAlgorithm.encrypt(payloadJson.getBytes(StandardCharsets.UTF_8), header.getBytes());
-        System.out.println("CipherText : " + Hex.encodeHexString(authenticatedCipherText.getCipherText()));
-        System.out.println("Tag : " + Hex.encodeHexString(authenticatedCipherText.getTag()));
-
-        String encodeCipherText = Base64.encodeBase64URLSafeString(authenticatedCipherText.getCipherText());
-        String encodedTag = Base64.encodeBase64URLSafeString(authenticatedCipherText.getTag());
+        AuthenticatedCipherText authenticatedCipherText = encAlgorithm.encrypt(payloadJson.getBytes(StandardCharsets.UTF_8), header.getBytes(StandardCharsets.UTF_8));
+        String encodeCipherText = authenticatedCipherText.getBase64urlCipherText();
+        String encodedTag = authenticatedCipherText.getBase64urlTag();
         return String.format("%s.%s.%s.%s.%s", header, encodedKey, encodeIV, encodeCipherText, encodedTag);
-
-
+        */
+        return new JWTEncryptor(algorithm, encAlgorithm,
+            headerJson.getBytes(StandardCharsets.UTF_8),
+            payloadJson.getBytes(StandardCharsets.UTF_8)).encrypt();
     }
 
 }

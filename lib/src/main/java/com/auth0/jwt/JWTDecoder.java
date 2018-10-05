@@ -17,6 +17,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.binary.StringUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -59,6 +60,11 @@ final class JWTDecoder implements DecodedJWT {
 
     @Override
     public DecodedJWT decrypt(Algorithm algorithm) throws DecryptionException {
+
+        /*
+        if(algorithm == null) {
+            throw new DecryptionException(algorithm, "Algorithm is null");
+        }
         String algAlgId = getAlgorithm();
         if(!getAlgorithm().equals(algorithm.getName())) {
             throw new DecryptionException(algorithm, "alg Algorithm mismatch");
@@ -68,7 +74,7 @@ final class JWTDecoder implements DecodedJWT {
 
         byte[] iv = Base64.decodeBase64(getIV());
         byte[] tag = Base64.decodeBase64(getAuthenticationTag());
-        byte[] headerBytes = getHeader().getBytes();
+        byte[] headerBytes = getHeader().getBytes(StandardCharsets.UTF_8);
         byte[] cipherText = Base64.decodeBase64(getCipherText());
         byte[] decryptedKey = new byte[0];
 
@@ -84,9 +90,6 @@ final class JWTDecoder implements DecodedJWT {
         } else {
             decryptedKey = algorithm.decrypt(encryptedKey);
         }
-
-        System.out.printf("CMK = %s\n", Hex.encodeHexString(decryptedKey));
-
         List<String> aeshsAlgs = Arrays.asList("A128CBC-HS256", "A192CBC-HS384", "A256CBC-HS512");
         List<String> aesgcmAlgs = Arrays.asList("A128GCM", "A192GCM", "A256GCM");
         if(aeshsAlgs.contains(getEncAlgorithm())) {
@@ -94,8 +97,6 @@ final class JWTDecoder implements DecodedJWT {
             int mid = decryptedKey.length / 2;
             byte[] encKey = Arrays.copyOfRange(decryptedKey, mid, decryptedKey.length);
             byte[] macKey = Arrays.copyOfRange(decryptedKey, 0, mid);
-            System.out.printf("CEK = %s\n", Hex.encodeHexString(encKey));
-            System.out.printf("CIK = %s\n", Hex.encodeHexString(macKey));
             CipherParams cipherParams = new CipherParams(encKey, macKey, iv);
             Algorithm encAlg = Algorithm.getContentEncryptionAlg(getEncAlgorithm(), cipherParams);
             byte[] plainText = encAlg.decrypt(cipherText, tag, headerBytes);
@@ -103,13 +104,9 @@ final class JWTDecoder implements DecodedJWT {
             if("JWT".equals(getContentType())) {
                 return JWT.decode(payloadStr);
             } else {
-                System.out.println(payloadStr);
                 final JWTParser converter = new JWTParser();
                 payload = converter.parsePayload(payloadStr);
                 Map<String, Claim> claims = payload.getClaims();
-                for (Map.Entry<String, Claim> entry : claims.entrySet()) {
-                    System.out.printf("%s : %s\n", entry.getKey(), entry.getValue().asString());
-                }
             }
         } else if (aesgcmAlgs.contains(getEncAlgorithm())) {
             CipherParams cipherParams = new CipherParams(decryptedKey, iv);
@@ -119,15 +116,22 @@ final class JWTDecoder implements DecodedJWT {
             if("JWT".equals(getContentType())) {
                 return JWT.decode(payloadStr);
             } else {
-                System.out.println(payloadStr);
                 final JWTParser converter = new JWTParser();
                 payload = converter.parsePayload(payloadStr);
                 Map<String, Claim> claims = payload.getClaims();
-                for (Map.Entry<String, Claim> entry : claims.entrySet()) {
-                    System.out.printf("%s : %s\n", entry.getKey(), entry.getValue().asString());
-                }
             }
+        }
+        */
 
+        byte[] plainText = new JWTDecryptor(algorithm).decrypt(getToken());
+        String payloadStr = StringUtils.newStringUtf8(plainText);
+        if("JWT".equals(getContentType())) {
+            // payload is a JWT so just return decoded JWT instead of setting payload claims
+            return JWT.decode(payloadStr);
+        } else {
+            final JWTParser converter = new JWTParser();
+            payload = converter.parsePayload(payloadStr);
+            Map<String, Claim> claims = payload.getClaims();
         }
         return null;
     }
