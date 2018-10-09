@@ -173,7 +173,7 @@ public class KeyBundleTest {
     @Test
     public void testUnknownSource() throws ParseException, ImportException, IOException, JWKException, ValueError  {
         exception.expect(ImportException.class);
-        KeyBundle keyBundle = new KeyBundle("foobar", true);
+        KeyBundle keyBundle = new KeyBundle("foobar", "jwk", null);
     }
 
     @Test

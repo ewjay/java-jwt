@@ -397,38 +397,6 @@ public abstract class Key {
         return this.toDict().toString();
     }
 
-    /**
-     * Sets all common parameters(kty, alg, use, kid, x5t,  x5u, x5c) and
-     * additonal parameters for this key
-     * @param props Map of parameter names and values
-     */
-    public void setProperties(Map<String, Object> props) {
-        for (Map.Entry<String, Object> entry : props.entrySet()) {
-            String key = entry.getKey();
-            Object val = entry.getValue();
-            if(key.equals("kty")) {
-                kty =  Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            } else if(key.equals("alg")) {
-                alg = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            } else if(key.equals("use")) {
-                use = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            } else if(key.equals("kid")) {
-                kid = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            } else if(key.equals("x5t")) {
-                x5t = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            } else if(key.equals("x5u")) {
-                x5u = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            } else if(key.equals("x5c")) {
-                if(x5c == null)
-                    x5c = new String[0];
-                else
-                    x5c = (String[]) val;
-            } else {
-                args.put(key, Utils.isNullOrEmpty((String) val) ? "" : (String) val );
-            }
-        }
-    }
-
 
     /**
      *

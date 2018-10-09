@@ -562,37 +562,6 @@ public class RSAKey extends Key {
 
     @Override
     /**
-     * Sets properties for the JWK private/public key components
-     */
-    public void setProperties(Map<String, Object> props) {
-         for (Map.Entry<String, Object> entry : props.entrySet()) {
-            String key = entry.getKey();
-            Object val = entry.getValue();
-            if(key.equals("n")) {
-                n = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            } else if(key.equals("e")) {
-                e = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            } else if(key.equals("p")) {
-                p = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            } else if(key.equals("q")) {
-                q = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            } else if(key.equals("dp")) {
-                dp = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            } else if(key.equals("dq")) {
-                dq = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            }  else if(key.equals("qi")) {
-                qi = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            }  else if(key.equals("oth")) {
-                oth = val == null ? Collections.<Map<String,String>>emptyList() :
-                    (List<Map<String, String>>) val;
-            } else {
-                super.setProperties(props);
-            }
-        }
-    }
-
-    @Override
-    /**
      * Gets the java.security.interfaces.RSAKey (Private/public) key
      */
     public java.security.Key getKey(Boolean isPrivate) throws ValueError {

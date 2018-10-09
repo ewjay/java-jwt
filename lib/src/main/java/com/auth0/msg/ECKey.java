@@ -5,6 +5,7 @@ import com.auth0.jwt.exceptions.oicmsg_exceptions.HeaderError;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.JWKException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
+import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey;
 import org.bouncycastle.jcajce.provider.asymmetric.util.EC5Util;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -321,27 +322,23 @@ public class ECKey extends Key{
 
     @Override
     public java.security.Key getKey(Boolean isPrivate) throws ValueError {
-        if(key == null) {
-            try {
+        try {
+            if(key == null) {
                 deserialize();
-            } catch (DeserializationNotPossible e) {
-                throw new ValueError(e.toString());
             }
-        }
-        if(isPrivate) {
-            if(!isPrivateKey()) {
-                throw new ValueError("Not a private key");
-            }
-        } else {
-            if(isPrivateKey()) {
-                try {
+            if (isPrivate) {
+                if(!isPrivateKey()) {
+                    throw new ValueError("Not a private key");
+                }
+            } else {
+                if(isPrivateKey()) {
                     return (java.security.Key) getPublicKeyFromPrivateKey((ECPrivateKey) key);
-                } catch(Exception e) {
-                    throw new ValueError(e.toString());
                 }
             }
+            return key;
+        } catch(Exception e) {
+            throw new ValueError(e.toString());
         }
-        return key;
     }
 
     @Override
@@ -486,7 +483,6 @@ public class ECKey extends Key{
         }
         return ecPublicKey;
     }
-
     /**
      * Checks to see if this is a valid curve value
      * @param curve

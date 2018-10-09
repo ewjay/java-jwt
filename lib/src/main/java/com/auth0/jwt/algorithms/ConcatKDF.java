@@ -18,7 +18,7 @@ public class ConcatKDF {
 
     ConcatKDF(String hashAlg) throws KDFException {
         if(hashAlg == null) {
-            throw new KDFException("Invalid hash algorithm.");
+            throw new KDFException("Hash algorithm cannot be null");
         }
         this.hashAlg = hashAlg;
     }
@@ -68,8 +68,6 @@ public class ConcatKDF {
         if(suppPrivInfo != null) {
             byteBuffer.put(suppPrivInfo);
         }
-
-        System.out.println("Byte Bufer = " + Hex.encodeHexString(byteBuffer.array()));
         return byteBuffer.array();
     }
 
@@ -83,7 +81,6 @@ public class ConcatKDF {
             byteBuffer.putInt(0).put(Z).put(otherInfo);
             for (int i = 1; i <= repetitions; i++) {
                 byteBuffer.putInt(0, i);
-                System.out.printf("Round %d = %s\n", i, Hex.encodeHexString(byteBuffer.array()));
                 messageDigest.update(byteBuffer.array());
                 byteArrayOutputStream.write(messageDigest.digest());
             }

@@ -2,6 +2,9 @@ package com.auth0.msg;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.config.CookieSpecs;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.config.Registry;
@@ -14,10 +17,14 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.protocol.HttpContext;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
 import org.apache.http.ssl.TrustStrategy;
 import org.apache.http.util.EntityUtils;
+import org.hamcrest.core.IsEqual;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -41,15 +48,16 @@ public class HttpClientUtilTest {
 
     @Test
     public void testDefaultClient() throws Exception {
-        CloseableHttpClient httpClient = HttpClientUtil.instance();
 
         String source = "https://connect.openid4.us:5443/phpOp/.well-known/openid-configuration";
 
+        CloseableHttpClient httpClient = null;
+        CloseableHttpResponse response = null;
 
         try {
 
             httpClient = HttpClientUtil.instance();
-            CloseableHttpResponse response = httpClient.execute(new HttpGet(source));
+            response = httpClient.execute(new HttpGet(source));
 
             int status = response.getStatusLine().getStatusCode();
 
@@ -61,11 +69,14 @@ public class HttpClientUtilTest {
                 }
                 System.out.println(EntityUtils.toString(response.getEntity()));
             }
+            EntityUtils.consume(response.getEntity());
         } catch(IOException e) {
             System.out.println(e);
 
         }finally {
-            httpClient.close();
+            if(response != null) {
+                response.close();
+            }
         }
 
 
@@ -166,6 +177,117 @@ public class HttpClientUtilTest {
 
 
     }
+
+    @Ignore
+    public void givenIgnoringCertificates_whenHttpsUrlIsConsumed_thenCorrect()
+        throws Exception {
+        SSLContext sslContext = new SSLContextBuilder()
+            .loadTrustMaterial(null, (certificate, authType) -> true).build();
+
+        CloseableHttpClient client = HttpClients.custom()
+            .setSSLContext(sslContext)
+            .setSSLHostnameVerifier(new NoopHostnameVerifier())
+            .build();
+        HttpGet httpGet = new HttpGet("https://oidc.openid4.us:5443/phpOp/.well-known/openid-configuration");
+        httpGet.setHeader("Accept", "application/xml");
+
+        HttpResponse response = client.execute(httpGet);
+        Assert.assertThat(response.getStatusLine().getStatusCode(), IsEqual.equalTo(200));
+    }
+
+    /**
+     * A thread that performs a GET.
+     */
+    static class GetThread extends Thread {
+
+        private final CloseableHttpClient httpClient;
+        private final HttpContext context;
+        private final HttpGet httpget;
+        private final int id;
+
+        public GetThread(CloseableHttpClient httpClient, HttpGet httpget, int id) {
+            this.httpClient = httpClient;
+            this.context = new BasicHttpContext();
+            this.httpget = httpget;
+            this.id = id;
+        }
+
+        /**
+         * Executes the GetMethod and prints some status information.
+         */
+        @Override
+        public void run() {
+            try {
+                System.out.println(id + " - " + httpget.getURI());
+                HttpClientUtil.HttpFetchResponse response = HttpClientUtil.fetchUri(httpget, context);
+                System.out.printf("%d - %s : %d : %s\n", id, httpget.getURI().toString(), response.getStatusCode(), response.getContentType());
+
+
+            } catch (Exception e) {
+                System.out.println(id + " - error: " + e);
+            }
+        }
+
+    }
+
+    public void connectionThreadHelper(CloseableHttpClient httpClient) throws IOException {
+
+        HttpClientUtil.setClient(httpClient);
+        try {
+            // create an array of URIs to perform GETs on
+            String[] urisToGet = {
+                "http://hc.apache.org/",
+                "http://hc.apache.org/httpcomponents-core-ga/",
+                "http://hc.apache.org/httpcomponents-client-ga/",
+                "https://www.yahoo.com",
+                "https://www.google.com",
+                "https://www.bing.com",
+                "https://www.microsoft.com"
+            };
+
+            final int iterations = 100;
+            GetThread[] threads = new GetThread[iterations];
+
+            for(int num = 0; num < iterations; num++) {
+                HttpGet httpget = new HttpGet(urisToGet[num % urisToGet.length]);
+                threads[num] = new GetThread(HttpClientUtil.instance(), httpget, num + 1);
+            }
+            for (int j = 0; j < threads.length; j++) {
+                threads[j].start();
+            }
+            // join the threads
+            for (int j = 0; j < threads.length; j++) {
+                threads[j].join();
+            }
+
+        } catch(Exception e) {
+            System.out.println(e.toString());
+        }
+    }
+
+
+    @Test
+    public void testClientWithThreads() {
+        CloseableHttpClient httpClient = HttpClients.custom()
+            .setDefaultRequestConfig(RequestConfig.custom()
+                .setCookieSpec(CookieSpecs.STANDARD).build())
+            .setMaxConnTotal(100)
+            .build();
+
+
+        CloseableHttpClient defaultClient = HttpClients.createDefault();
+
+        try {
+            connectionThreadHelper(httpClient);
+            connectionThreadHelper(defaultClient);
+        } catch(IOException e) {
+            System.out.println(e.toString());
+        }
+
+    }
+
+
+
 
 
 }

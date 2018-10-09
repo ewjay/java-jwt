@@ -12,13 +12,13 @@ public class CipherParams {
     private byte[] iv;
 
     public CipherParams(byte[] encKey, byte[] macKey, byte[] iv) {
-        this.encKey = encKey;
-        this.macKey = macKey;
-        this.iv = iv;
+        setEncKey(encKey);
+        setMacKey(macKey);
+        setIv(iv);
     }
 
     public CipherParams(byte[] encKey, byte[] iv) {
-        this(encKey, new byte[0], iv);
+        this(encKey, null, iv);
     }
 
 
@@ -57,18 +57,6 @@ public class CipherParams {
             } else if("A256GCM".equals(encAlgorithm)) {
                 requiredLen = 32;
                 ivLength = 12;
-                encKeyLength = 32;
-            }  else if("ECDH-ES+A128KW".equals(encAlgorithm)) {
-                requiredLen = 16;
-                ivLength = 0;
-                encKeyLength = 16;
-            } else if("ECDH-ES+A192KW".equals(encAlgorithm)) {
-                requiredLen = 24;
-                ivLength = 0;
-                encKeyLength = 24;
-            } else if("ECDH-ES+A256KW".equals(encAlgorithm)) {
-                requiredLen = 32;
-                ivLength = 0;
                 encKeyLength = 32;
             }
         }
@@ -144,7 +132,7 @@ public class CipherParams {
     }
 
     public void setEncKey(byte[] encKey) {
-        this.encKey = encKey;
+        this.encKey = encKey == null ? new  byte[0] : encKey;
     }
 
     public byte[] getMacKey() {
@@ -159,7 +147,7 @@ public class CipherParams {
     }
 
     public void setMacKey(byte[] macKey) {
-        this.macKey = macKey;
+        this.macKey = macKey == null ? new byte[0] : macKey;
     }
 
     public byte[] getIv() {
@@ -167,6 +155,6 @@ public class CipherParams {
     }
 
     public void setIv(byte[] iv) {
-        this.iv = iv;
+        this.iv = iv == null ? new byte[0] : iv;
     }
 }

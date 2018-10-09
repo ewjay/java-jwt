@@ -11,13 +11,11 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 public class AESGCMAlgorithm extends Algorithm {
@@ -60,7 +58,7 @@ public class AESGCMAlgorithm extends Algorithm {
 
     @Override
     public byte[] sign(byte[] contentBytes) throws SignatureGenerationException {
-        return new byte[0];
+        return null;
     }
 
     @Override
@@ -69,13 +67,9 @@ public class AESGCMAlgorithm extends Algorithm {
             SecretKeySpec secretKeySpec = new SecretKeySpec(cipherParams.getEncKey(), "AES");
             GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(128, cipherParams.getIv());
             byte[] cipherTextWithTag = crypto.encrypt(getDescription(), secretKeySpec, gcmParameterSpec, contentBytes, aad);
-            System.out.println(Hex.encodeHexString(cipherTextWithTag));
             // break cipherTextWithTag into cipherText & tag
             byte[] cipherText = Arrays.copyOfRange(cipherTextWithTag, 0, cipherTextWithTag.length - 16);
             byte[] authTag = Arrays.copyOfRange(cipherTextWithTag, cipherTextWithTag.length - 16, cipherTextWithTag.length);
-            System.out.println(Hex.encodeHexString(cipherText));
-            System.out.println(Hex.encodeHexString(authTag));
-
             return new AuthenticatedCipherText(cipherText, authTag);
         } catch(NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException | InvalidAlgorithmParameterException e) {
             throw new EncryptionException(this, e);

@@ -292,33 +292,69 @@ public class RSAKeyTest {
     }
 
     @Test
-    public void testKeyBuilder2() throws JWKException, ValueError {
-        KeyPair keyPair = RSAKey.generateRSAKeyPair(2048);
-        RSAPrivateCrtKey rsaPrivateKey = (RSAPrivateCrtKey) keyPair.getPrivate();
-        RSAPublicKey rsaPublicKey = (RSAPublicKey) keyPair.getPublic();
+    public void testKeyBuilder2() throws JWKException, ValueError, SerializationNotPossible {
 
-        RSAKey privateKey = RSAKey.builder()
-            .setN(Utils.bigIntToBase64url(rsaPrivateKey.getModulus()))
-            .setE(Utils.bigIntToBase64url(rsaPrivateKey.getPublicExponent()))
-            .setD(Utils.bigIntToBase64url(rsaPrivateKey.getPrivateExponent()))
-            .setP(Utils.bigIntToBase64url(rsaPrivateKey.getPrimeP()))
-            .setQ(Utils.bigIntToBase64url(rsaPrivateKey.getPrimeQ()))
-            .setDp(Utils.bigIntToBase64url(rsaPrivateKey.getPrimeExponentP()))
-            .setDq(Utils.bigIntToBase64url(rsaPrivateKey.getPrimeExponentQ()))
-            .setQi(Utils.bigIntToBase64url(rsaPrivateKey.getCrtCoefficient())).build();
+        int[] keySizes = new int[] {
+            1024, 2048, 4096
+        };
 
-        RSAKey publicKey = RSAKey.builder()
-            .setN(Utils.bigIntToBase64url(rsaPublicKey.getModulus()))
-            .setE(Utils.bigIntToBase64url(rsaPublicKey.getPublicExponent()))
-            .build();
+        for(int keySize : keySizes) {
+            for(int i = 0; i < 5; i++) {
+                KeyPair keyPair = RSAKey.generateRSAKeyPair(keySize);
+                RSAPrivateCrtKey rsaPrivateKey = (RSAPrivateCrtKey) keyPair.getPrivate();
+                RSAPublicKey rsaPublicKey = (RSAPublicKey) keyPair.getPublic();
 
-        Assert.assertNotNull(privateKey);
-        Assert.assertNotNull(publicKey);
-        Assert.assertTrue(privateKey.getKey(true) instanceof  RSAPrivateCrtKey);
-        Assert.assertEquals(rsaPrivateKey, (RSAPrivateCrtKey)privateKey.getKey(true));
-        Assert.assertEquals(rsaPublicKey, (RSAPublicKey)privateKey.getKey(false));
-        Assert.assertTrue(publicKey.getKey(false) instanceof  RSAPublicKey);
-        Assert.assertEquals(rsaPublicKey, (RSAPublicKey) publicKey.getKey(false));
+                RSAKey privateKey = RSAKey.builder()
+                    .setN(Utils.bigIntToBase64url(rsaPrivateKey.getModulus()))
+                    .setE(Utils.bigIntToBase64url(rsaPrivateKey.getPublicExponent()))
+                    .setD(Utils.bigIntToBase64url(rsaPrivateKey.getPrivateExponent()))
+                    .setP(Utils.bigIntToBase64url(rsaPrivateKey.getPrimeP()))
+                    .setQ(Utils.bigIntToBase64url(rsaPrivateKey.getPrimeQ()))
+                    .setDp(Utils.bigIntToBase64url(rsaPrivateKey.getPrimeExponentP()))
+                    .setDq(Utils.bigIntToBase64url(rsaPrivateKey.getPrimeExponentQ()))
+                    .setQi(Utils.bigIntToBase64url(rsaPrivateKey.getCrtCoefficient())).build();
+
+                Assert.assertEquals(privateKey.getN(), Utils.bigIntToBase64url(rsaPrivateKey.getModulus()));
+                Assert.assertEquals(privateKey.getE(), Utils.bigIntToBase64url(rsaPrivateKey.getPublicExponent()));
+                Assert.assertEquals(privateKey.getD(), Utils.bigIntToBase64url(rsaPrivateKey.getPrivateExponent()));
+                Assert.assertEquals(privateKey.getP(), Utils.bigIntToBase64url(rsaPrivateKey.getPrimeP()));
+                Assert.assertEquals(privateKey.getQ(), Utils.bigIntToBase64url(rsaPrivateKey.getPrimeQ()));
+                Assert.assertEquals(privateKey.getDp(), Utils.bigIntToBase64url(rsaPrivateKey.getPrimeExponentP()));
+                Assert.assertEquals(privateKey.getDq(), Utils.bigIntToBase64url(rsaPrivateKey.getPrimeExponentQ()));
+                Assert.assertEquals(privateKey.getQi(), Utils.bigIntToBase64url(rsaPrivateKey.getCrtCoefficient()));
+
+                RSAKey publicKey1 = RSAKey.builder()
+                    .setN(Utils.bigIntToBase64url(rsaPublicKey.getModulus()))
+                    .setE(Utils.bigIntToBase64url(rsaPublicKey.getPublicExponent()))
+                    .build();
+
+                RSAKey publicKey2 = RSAKey.keyBuilder(privateKey.getKey(false)).build();
+
+                Map<String, Object> pubParts1 = privateKey.serialize(false);
+                Map<String, Object> pubParts2 = publicKey1.serialize(false);
+                Map<String, Object> pubParts3 = publicKey2.serialize(false);
+
+
+                System.out.println(privateKey.serialize(true));
+                System.out.println(pubParts1);
+                System.out.println(pubParts2);
+                System.out.println(pubParts3);
+
+
+                Assert.assertNotNull(privateKey);
+                Assert.assertNotNull(publicKey1);
+                Assert.assertTrue(privateKey.getKey(true) instanceof  RSAPrivateCrtKey);
+                Assert.assertEquals(rsaPrivateKey, (RSAPrivateCrtKey)privateKey.getKey(true));
+                Assert.assertEquals(rsaPublicKey, (RSAPublicKey)privateKey.getKey(false));
+                Assert.assertTrue(publicKey1.getKey(false) instanceof  RSAPublicKey);
+                Assert.assertEquals(rsaPublicKey, (RSAPublicKey) publicKey1.getKey(false));
+                Assert.assertTrue(publicKey1.equals(publicKey2));
+                Assert.assertTrue(pubParts1.equals(pubParts2));
+                Assert.assertTrue(pubParts2.equals(pubParts3));
+            }
+        }
+
+
 
     }
 

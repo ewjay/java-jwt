@@ -13,7 +13,7 @@ public class ECDHESKeyWrapAlgorithm extends ECDHESAlgorithm {
     }
 
     ECDHESKeyWrapAlgorithm(String id, String algorithm, ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws IllegalArgumentException {
-        super(new CryptoHelper(), id, algorithm, senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
+        this(new CryptoHelper(), id, algorithm, senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
     }
 
     @Override
@@ -39,7 +39,7 @@ public class ECDHESKeyWrapAlgorithm extends ECDHESAlgorithm {
             if(algorithm != null) {
                 return algorithm.unwrap(cipherText);
             } else {
-                throw new EncryptionException(this, "Unexpected keywrap algorithm");
+                throw new DecryptionException(this, "Unexpected keywrap algorithm");
             }
         } catch(KeyAgreementException e) {
             throw new DecryptionException(this, e);

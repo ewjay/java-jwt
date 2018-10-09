@@ -16,8 +16,8 @@ public class AESKeyWrapAlgorithm extends Algorithm {
 
     AESKeyWrapAlgorithm(CryptoHelper crypto, String id, String algorithm, byte[] keywrapKey) throws IllegalArgumentException {
         super(id, algorithm);
-        if(keywrapKey == null || keywrapKey.length == 0) {
-            throw new IllegalArgumentException("Keywrap encryption key cannot be empty or null.");
+        if(keywrapKey == null) {
+            throw new IllegalArgumentException("Keywrap encryption key cannot be null");
         }
         int requiredLen = 0;
         if("A128KW".equals(id)) {
@@ -30,7 +30,7 @@ public class AESKeyWrapAlgorithm extends Algorithm {
             throw new IllegalArgumentException("Unknown KeyWrap algorithm " + id);
         }
         if(requiredLen != keywrapKey.length) {
-            String error = String.format("Invald keywarp key length for algorithm %s. Expected %d Actual %d", id, requiredLen, keywrapKey.length);
+            String error = String.format("Invald keywrap key length for algorithm %s. Expected %d Actual %d", id, requiredLen, keywrapKey.length);
             throw new IllegalArgumentException(error);
         }
         this.crypto = crypto;

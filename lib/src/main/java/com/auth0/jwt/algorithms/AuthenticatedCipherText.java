@@ -19,19 +19,11 @@ public class AuthenticatedCipherText {
         return Base64.encodeBase64URLSafeString(cipherText);
     }
 
-    public void setCipherText(byte[] cipherText) {
-        this.cipherText = cipherText;
-    }
-
     public byte[] getTag() {
         return tag;
     }
 
     public String getBase64urlTag() {
         return Base64.encodeBase64URLSafeString(tag);
-    }
-
-    public void setTag(byte[] tag) {
-        this.tag = tag;
     }
 }

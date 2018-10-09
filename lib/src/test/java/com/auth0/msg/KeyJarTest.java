@@ -10,7 +10,6 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -22,10 +21,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 
 public class KeyJarTest {
@@ -339,10 +336,10 @@ public class KeyJarTest {
         KeyJar keyJar = new KeyJar();
         keyJar.addKeyBundle("", keyBundle);
 
-        Map<String, List<Map<String, Object>>> keysJwks =
-            keyJar.exportsJwks(false, "");
+        Map<String, Object> keysJwks =
+            keyJar.exportJwks(false, "");
         Assert.assertNotNull(keysJwks);
-        List<Map<String, Object>> keys = keysJwks.get("keys");
+        List<Map<String, Object>> keys = (List<Map<String, Object>>)keysJwks.get("keys");
         Assert.assertEquals(keys.size(), 1);
         Map<String, Object> keyInfo = keys.get(0);
         Assert.assertEquals(keyInfo.get("use"), "sig");
@@ -373,10 +370,10 @@ public class KeyJarTest {
     }
 
 
-    @Ignore
+    @Test
     public void testProvider() throws Exception {
         Map<String, Object> pcr = new HashMap<String, Object>();
-        pcr.put("jwks_uri", "https://connect-op.herokuapp.co/jwks.json");
+        pcr.put("jwks_uri", "https://connect-op.herokuapp.com/jwks.json");
         KeyJar keyJar = new KeyJar();
         keyJar.loadKeys(pcr, "https://connect-op.heroku.com", false);
         System.out.println(keyJar.getBundle("https://connect-op.heroku.com").get(0).getKeys().toString());
@@ -385,9 +382,29 @@ public class KeyJarTest {
 
         List<Key> keys2  = keyJar.getBundle("https://connect-op.heroku.com").get(0).getKeys();
         System.out.println(keys2.toString());
-        Assert.assertEquals(keys.size(), 1);
+        Assert.assertEquals(1, keys.size());
+
+        KeyBundle keyBundle = keyJar.find("https://connect-op.herokuapp.com/jwks.json", "https://connect-op.heroku.com");
+        Assert.assertTrue(keyBundle != null);
+
+        KeyBundle keyBundleNull = keyJar.find("https://connect-op.herokuapp.com/dummy.json", "https://connect-op.heroku.com");
+        Assert.assertTrue(keyBundleNull == null);
+
+
     }
 
+    @Test
+    public void testLoadKeysFromConfig() throws Exception {
+        Object json = jsonParser.parse(JWK1STRING);
+
+        Map<String, Object> pcr = new HashMap<String, Object>();
+        pcr.put("jwks", json);
+        KeyJar keyJar = new KeyJar();
+        keyJar.loadKeys(pcr, "", false);
+        List<Key> keys = keyJar.getIssuerKeys("");
+        Assert.assertEquals(4, keys.size());
+
+    }
 
 
     @Test
@@ -608,7 +625,7 @@ public class KeyJarTest {
 
 
     @Test
-    public void testThunbprints() throws Exception, SerializationNotPossible {
+    public void testThumbprints() throws Exception, SerializationNotPossible {
         final String JWKS = "{\"keys\":" +
             "[{\"n\":\"zkpUgEgXICI54blf6iWiD2RbMDCOO1jV0VSff1MFFnujM4othfMsad7H1kRo50YM5S_X" +
             "9TdvrpdOfpz5aBaKFhT6Ziv0nhtcekq1eRl8mjBlvGKCE5XGk-0LFSDwvqgkJoFYInq7bu0a4JEzKs" +
@@ -648,6 +665,52 @@ public class KeyJarTest {
 
     }
 
+    @Test
+    public void testImportExportJSON() throws Exception, SerializationNotPossible {
+        final String JWKS = "{\"keys\":" +
+            "[{\"n\":\"zkpUgEgXICI54blf6iWiD2RbMDCOO1jV0VSff1MFFnujM4othfMsad7H1kRo50YM5S_X" +
+            "9TdvrpdOfpz5aBaKFhT6Ziv0nhtcekq1eRl8mjBlvGKCE5XGk-0LFSDwvqgkJoFYInq7bu0a4JEzKs" +
+            "5AyJY75YlGh879k1Uu2Sv3ZZOunfV1O1Orta-NvS-aG_jN5cstVbCGWE20H0vFVrJKNx0Zf-u-aA-s" +
+            "yM4uX7wdWgQ-owoEMHge0GmGgzso2lwOYf_4znanLwEuO3p5aabEaFoKNR4K6GjQcjBcYmDEE4CtfR" +
+            "U9AEmhcD1kleiTB9TjPWkgDmT9MXsGxBHf3AKT5w\",\"e\":\"AQAB\",\"kty\":\"RSA\"," +
+            "\"kid\":\"5-VBFv40P8D4I-7SFz7hMugTbPs\",\"use\":\"enc\"}," +
+            "{\"k\":\"YTEyZjBlMDgxMGI4YWU4Y2JjZDFiYTFlZTBjYzljNDU3YWM0ZWNiNzhmNmFlYTNkNTY0N" +
+            "zMzYjE\",\"kty\":\"oct\",\"use\":\"enc\"}," +
+            "{\"kty\":\"EC\",\"kid\":\"7snis\"," +
+            "\"use\":\"sig\",\"x\":\"q0WbWhflRbxyQZKFuQvh2nZvg98ak-twRoO5uo2L7Po\"," +
+            "\"y\":\"GOd2jL_6wa0cfnyA0SmEhok9fkYEnAHFKLLM79BZ8_E\",\"crv\":\"P-256\"}]}";
+        JSONObject jsonObject = (JSONObject) jsonParser.parse(JWKS);
+        KeyJar keyJar = new KeyJar();
+        keyJar.importJwks((Map<String, Object>)jsonObject, "");
+
+        String exportedJSON = keyJar.exportJwksAsJson(false, "");
+
+        KeyJar keyjarExport = new KeyJar();
+        keyjarExport.importJwksAsJson(exportedJSON, "");
+
+        List<Key> keys = keyJar.getIssuerKeys("");
+        List<String> expected = new ArrayList<>(Arrays.asList(
+            "iA7PvG_DfJIeeqQcuXFmvUGjqBkda8In_uMpZrcodVA", // rsa
+            "kLsuyGef1kfw5-t-N9CJLIHx_dpZ79-KemwqjwdrvTI", // oct
+            "akXzyGlXg8yLhsCczKb_r8VERLx7-iZBUMIVgg2K7p4"  // ec
+        ));
+        Assert.assertEquals(3, keys.size());
+        for(Key key : keys) {
+            String thumbprint = key.thumbprint("SHA-256");
+            Assert.assertTrue(expected.contains(thumbprint));
+        }
+
+        Key key = keys.get(2);
+        String thumbprint = key.thumbprint("SHA-256");
+        String thumbprintJSON = "{\"crv\":\"P-256\",\"kty\":\"EC\"," +
+            "\"x\":\"q0WbWhflRbxyQZKFuQvh2nZvg98ak-twRoO5uo2L7Po\"," +
+            "\"y\":\"GOd2jL_6wa0cfnyA0SmEhok9fkYEnAHFKLLM79BZ8_E\"}";
+        String expectedThumbprint = Base64.encodeBase64URLSafeString(
+            MessageDigest.getInstance("SHA-256").digest(
+                thumbprintJSON.getBytes(Charset.forName("UTF-8"))));
+        Assert.assertEquals(expectedThumbprint, thumbprint);
+
+    }
 
 
 }

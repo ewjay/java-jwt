@@ -31,6 +31,9 @@ public class AESHSAlgorithm extends Algorithm {
     AESHSAlgorithm(CryptoHelper crypto, String id, String algorithm, CipherParams cipherParams) throws IllegalArgumentException {
         super(id, algorithm);
         this.crypto = crypto;
+        if (cipherParams == null) {
+            throw new IllegalArgumentException("The cipher param cannot be null");
+        }
         this.cipherParams = cipherParams;
         keySize = Integer.parseInt(id.substring(1, 4));
         String hmacAlgId = id.substring(8);
@@ -40,22 +43,22 @@ public class AESHSAlgorithm extends Algorithm {
             hmacAlg = Algorithm.HMAC384(cipherParams.getMacKey());
         } else if("HS512".equals(hmacAlgId)) {
             hmacAlg = Algorithm.HMAC512(cipherParams.getMacKey());
+        } else {
+            throw new IllegalArgumentException("Invalid algorithm");
         }
-
         hmacByteLength = Integer.parseInt(id.substring(10)) / 16 /* half the bit length converted into byte (2*8) */;
-
-        if (cipherParams == null) {
-            throw new IllegalArgumentException("The cipher param cannot be null");
-        }
         if(cipherParams.getEncKey().length * 8 != keySize) {
             String error = String.format("The key size is invalid for the algorithm %s. Expected size : %d Actual : %d", id, keySize, cipherParams.getEncKey().length * 8);
+            throw new IllegalArgumentException(error);
+        }
+        if(cipherParams.getMacKey().length * 8 != keySize) { // mac key length should be same as encryption key len
+            String error = String.format("The mac key size is invalid for the algorithm %s. Expected size : %d Actual : %d", id, keySize, cipherParams.getMacKey().length * 8);
             throw new IllegalArgumentException(error);
         }
         if(cipherParams.getIv().length * 8 != 128) {
             String error = String.format("The IV size is invalid for the algorithm %s. Expected size : 128 Actual : %d", id, cipherParams.getIv().length * 8);
             throw new IllegalArgumentException(error);
         }
-
     }
 
     AESHSAlgorithm(String id, String algorithm, CipherParams cipherParams) throws IllegalArgumentException {
@@ -105,22 +108,12 @@ public class AESHSAlgorithm extends Algorithm {
         try {
 
             if(aad != null && hmacAlg != null) {
-                System.out.printf("cek : %s\ncik : %s\niv : %s\nTag : %s\n",
-                    Hex.encodeHexString(cipherParams.getEncKey()),
-                    Hex.encodeHexString(cipherParams.getMacKey()),
-                    Hex.encodeHexString(cipherParams.getIv()),
-                    Hex.encodeHexString(authTag)
-                );
                 ByteBuffer byteBuffer = ByteBuffer.allocate(aad.length + cipherParams.getIv().length + cipherText.length + (Long.SIZE / Byte.SIZE));
                 byteBuffer.put(aad);
                 byteBuffer.put(cipherParams.getIv());
                 byteBuffer.put(cipherText);
                 byte[] AL = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(aad.length * 8).array();
                 byteBuffer.put(AL);
-                System.out.printf("hmac input : %s\n",
-                    Hex.encodeHexString(byteBuffer.array())
-                );
-
                 byte[] calculatedAuthTag = Arrays.copyOfRange(hmacAlg.sign(byteBuffer.array()), 0, hmacByteLength);
                 if(!Arrays.equals(authTag, calculatedAuthTag)) {
                     throw new Exception("Authentication tag does not match.");

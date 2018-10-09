@@ -152,20 +152,6 @@ public class SYMKey extends Key{
         return key;
     }
 
-
-    @Override
-    public void setProperties(Map<String, Object> props) {
-        for (Map.Entry<String, Object> entry : props.entrySet()) {
-            String key = entry.getKey();
-            Object val = entry.getValue();
-            if(key.equals("k")) {
-                k = Utils.isNullOrEmpty((String) val) ? "" : (String) val;
-            } else {
-                super.setProperties(props);
-            }
-        }
-    }
-
     @Override
     public boolean equals(Object other) {
         try {
