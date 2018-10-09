@@ -6,6 +6,7 @@ import com.auth0.jwt.exceptions.oicmsg_exceptions.ImportException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.JWKException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.SerializationNotPossible;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
+import com.auth0.jwt.impl.NullClaim;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.apache.commons.codec.binary.Base64;
@@ -72,16 +73,8 @@ public class KeyJar {
         if(url == null || url.isEmpty()) {
             throw new KeyException("No jwksUri");
         }
-
-        KeyBundle keyBundle;
-        if(url.contains("/localhost:") || url.contains("/localhost/")) {
-            keyBundle = new KeyBundle(url, false);
-        } else {
-            keyBundle = new KeyBundle(url, verifySSL);
-        }
-
+        KeyBundle keyBundle = new KeyBundle(url, "jwk", null);
         addKeyBundle(owner, keyBundle);
-
         return keyBundle;
     }
 
@@ -418,14 +411,13 @@ public class KeyJar {
             addUrl(issuer, jwksUri, null);
 
         } else {
-            Object jwks = (String) pcr.get("jwks");
+            Object jwks = pcr.get("jwks");
             if(jwks != null) {
                 if(jwks instanceof Map) {
-                    Map<String, Object> keys = (Map<String, Object>) ((Map)jwks).get("keys");
+                    List<Map<String, Object>> keys = (List<Map<String, Object>>) ((Map)jwks).get("keys");
                     if(keys != null) {
                         try {
-                            addKeyBundle(issuer, new KeyBundle(Arrays.asList(keys)));
-                            addKeyBundle(issuer, new KeyBundle(Collections.singletonList(keys)));
+                            addKeyBundle(issuer, new KeyBundle(keys));
                         }
                         catch(ImportException e) {
                         }
@@ -455,23 +447,27 @@ public class KeyJar {
      * Produces a dictionary that later can be easily mapped into a JSON string representing a JWKS.
      * @param isPrivate whether to include private key information
      * @param issuer the owner of the keys
-     * @return
+     * @return A JWKS object that represents the keyjar
      */
-    public Map<String,List<Map<String, Object>>> exportsJwks(boolean isPrivate, String issuer) {
+    public Map<String,Object> exportJwks(boolean isPrivate, String issuer) {
         List<Map<String, Object>> keys = new ArrayList<>();
-        for(KeyBundle keyBundle : this.issuerKeys.get(issuer)) {
-            for(Key key : keyBundle.getKeys()) {
-                if(key.getInactiveSince() == 0) {
-                    try {
-                        keys.add(key.serialize(isPrivate));
-                    }
-                    catch (SerializationNotPossible e) {
+        if(issuerKeys.get(issuer) != null) {
+            for(KeyBundle keyBundle : this.issuerKeys.get(issuer)) {
+                if(keyBundle.getKeys() != null) {
+                    for(Key key : keyBundle.getKeys()) {
+                        if(key.getInactiveSince() == 0) {
+                            try {
+                                keys.add(key.serialize(isPrivate));
+                            }
+                            catch (SerializationNotPossible e) {
+                            }
+                        }
                     }
                 }
             }
         }
 
-        Map<String,List<Map<String, Object>>> keysMap = new HashMap<>();
+        Map<String,Object> keysMap = new HashMap<>();
         keysMap.put("keys", keys);
         return keysMap;
     }
@@ -483,7 +479,7 @@ public class KeyJar {
      * @return JSON string of the JWKS
      */
     public String exportJwksAsJson(boolean isPrivate, String issuer) {
-        JSONObject json = new JSONObject(exportsJwks(isPrivate, issuer));
+        JSONObject json = new JSONObject(exportJwks(isPrivate, issuer));
         return json.toJSONString();
     }
 
@@ -503,7 +499,7 @@ public class KeyJar {
             if(!keysList.isEmpty()) {
                 if(keysList.get(0) instanceof Map) {
                     List<Map<String, Object>> k2 = (List<Map<String, Object>>)jwks.get("keys");
-                    addKeyBundle(issuer, new KeyBundle(k2, "", 0, verifySSL, "jwk", "", null));
+                    addKeyBundle(issuer, new KeyBundle(k2, "", "jwk", "", null));
                 }
             }
         }
@@ -570,7 +566,7 @@ public class KeyJar {
         }
 
         if(!Utils.isNullOrEmpty(kid)) {
-            for(Key key : this.getKeys(use, owner, kid, keyType, null)) {
+            for(Key key : this.getKeys(use, keyType, owner, kid, null)) {
                 if(key != null && !keys.contains(key)) {
                     keys.add(key);
                 }
@@ -607,12 +603,12 @@ public class KeyJar {
      * @param noKidIssuers list of issuers that do not require kids
      * @param allowMissingKid whether to allow missing kids
      * @param trustJKU whether to trust the JWT's jku header for fetching addtional keys (risky)
-     * @return List of usable java.security.Keys
+     * @return List of usable Keys
      * @throws IOException
      * @throws JWKException
      * @throws ValueError
      */
-    public List<java.security.Key> getJWTVerifyKeys(
+    public List<Key> getJWTVerifyKeys(
         String jwtString, String issuer, Map<String, List<String>> noKidIssuers,
         boolean allowMissingKid, boolean trustJKU) throws IOException, JWKException, ValueError
     {
@@ -647,7 +643,7 @@ public class KeyJar {
         String[] claimsList = new String[] {"aud", "client_id"};
         for(String claim : claimsList) {
             Claim payloadClaim = jwt.getClaim(claim);
-            if(payloadClaim == null)
+            if(payloadClaim == null || payloadClaim instanceof NullClaim)
                 continue;
             if(claim.equals("aud")) {
                 List<String> audList = null;
@@ -668,13 +664,10 @@ public class KeyJar {
         }
 
         // Only want the public keys. Symmetric keys are also OK.
-        List<java.security.Key> returnKeys = new ArrayList<>();
+        List<Key> returnKeys = new ArrayList<>();
         for(Key key : keys) {
             if(key.isPublicKey()) {
-                try {
-                    returnKeys.add(key.getKey(false));
-                } catch(ValueError e) {
-                }
+                returnKeys.add(key);
             }
         }
         return returnKeys;
@@ -697,8 +690,8 @@ public class KeyJar {
 
     /**
      * Build a keyjar given a configuration template of the type
-     *     Configuration of the type ::
-     *    keys = [
+     * Configuration of the type :
+     *   keys = [
      *    {"type": "RSA", "key": "cp_keys/key.pem", "use": ["enc", "sig"]},
      *    {"type": "EC", "crv": "P-256", "use": ["sig"]},
      *    {"type": "EC", "crv": "P-256", "use": ["enc"]}
@@ -731,7 +724,7 @@ public class KeyJar {
             if("RSA".equals(type)) {
                 if(spec.get("key") != null) {
                     try {
-                        kb = new KeyBundle(null, "file://" + (String) spec.get("key"), 0, true, "der", type, (List<String>) spec.get("use"));
+                        kb = new KeyBundle(null, "file://" + (String) spec.get("key"), "der", type, (List<String>) spec.get("use"));
                     } catch(Exception e) {
                         kb = newRSAKey(spec);
                     }
@@ -767,8 +760,6 @@ public class KeyJar {
                 }
                 jwks.put("keys", keysList);
                 keyJar.addKeyBundle("", kb);
-                System.out.println(jwks.toString());
-                System.out.println(kidd.toString());
             }
         }
         // Python returns jwks, keyjar, kidd

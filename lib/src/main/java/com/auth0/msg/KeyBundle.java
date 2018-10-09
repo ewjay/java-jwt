@@ -12,7 +12,6 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -54,14 +53,11 @@ public class KeyBundle {
     private List<Key> keys;
     private JSONObject impJwks;
     private String source;
-    private long cacheTime;
-    private boolean verifySSL;
     private String fileFormat;
     private String keyType;
     private List<String> keyUsage;
     private boolean remote;
     private long timeOut;
-    private String eTag;
     private long lastUpdated;
 
     /**
@@ -69,8 +65,6 @@ public class KeyBundle {
      *
      * @param keys A list of dictionaries with the keys ["kty", "key", "alg", "use", "kid"]
      * @param source Where the key set can be fetch from (file, http(s))
-     * @param cacheTime cache time in milliseconds
-     * @param verifySSL whether to verify SSL connection for https sources (unimplemented)
      * @param fileFormat file format of source (jwk, der)
      * @param keyType If local file and 'der' format what kind of key it is.
      *                Presently only 'rsa' is supported.
@@ -78,12 +72,10 @@ public class KeyBundle {
      *                 DER files. (sig, enc)
      * @throws ImportException
      */
-    public KeyBundle(List<Map<String, Object>> keys, String source, long cacheTime,
-                     boolean verifySSL,String fileFormat, String keyType, List<String> keyUsage)
+    public KeyBundle(List<Map<String, Object>> keys, String source,
+                     String fileFormat, String keyType, List<String> keyUsage)
         throws ImportException, IOException, JWKException, ValueError {
         this.keys = new ArrayList<Key>();
-        this.cacheTime = cacheTime == 0 ? 300000 : cacheTime;
-        this.verifySSL = verifySSL;
         this.fileFormat = Utils.isNullOrEmpty(fileFormat) ? "" : fileFormat.toLowerCase();
         this.keyType = keyType;
         this.keyUsage = keyUsage;
@@ -91,7 +83,6 @@ public class KeyBundle {
         this.timeOut = 0;
         this.impJwks = new JSONObject();
         this.lastUpdated = 0;
-        this.eTag = "";
 
         if (keys != null) {
             this.source = null;
@@ -139,7 +130,7 @@ public class KeyBundle {
      * @throws ValueError
      */
     public KeyBundle() throws ImportException, IOException, JWKException, ValueError {
-        this(null, "", 0, true, "jwk", "RSA", null);
+        this(null, "", "jwk", "RSA", null);
     }
 
     /**
@@ -153,20 +144,7 @@ public class KeyBundle {
      * @throws ValueError
      */
     public KeyBundle(List<Map<String, Object>> keyList) throws ImportException, IOException, JWKException, ValueError {
-        this(keyList, "", 0, true, "jwk", "", null);
-    }
-
-    /**
-     * Constructs a KeyBundle using only a source and whether to verify SSL connections
-     * @param source file or URI resource to fetch JWKs
-     * @param verifySSL
-     * @throws ImportException
-     * @throws IOException
-     * @throws JWKException
-     * @throws ValueError
-     */
-    public KeyBundle(String source, boolean verifySSL) throws ImportException, IOException, JWKException, ValueError {
-        this(null, source, 0, verifySSL, "jwk", "RSA", null);
+        this(keyList, "", "jwk", "", null);
     }
 
     /**
@@ -181,7 +159,7 @@ public class KeyBundle {
      * @throws ValueError
      */
     public KeyBundle(String source, String fileFormat, List<String> usage) throws ImportException, IOException, JWKException, ValueError {
-        this(null, source, 0, true, fileFormat, "RSA", usage);
+        this(null, source, fileFormat, "RSA", usage);
     }
 
     /**
@@ -194,7 +172,7 @@ public class KeyBundle {
      * @throws ValueError
      */
     public KeyBundle(String keyType) throws ImportException, IOException, JWKException, ValueError {
-        this(null, "", 0, true, "", keyType, null);
+        this(null, "", "", keyType, null);
     }
 
     /**
@@ -209,7 +187,7 @@ public class KeyBundle {
      * @throws ValueError
      */
     public KeyBundle(String keyType, List<String> usage) throws ImportException, IOException, JWKException, ValueError {
-        this(null, "", 0, true, "", keyType, usage);
+        this(null, "", "", keyType, usage);
     }
 
     /**
@@ -273,6 +251,7 @@ public class KeyBundle {
                     this.keys.add(keyInstance);
                 }
                 catch(Exception e) {
+                    System.out.println(e);
                 }
             }
         }
@@ -353,12 +332,88 @@ public class KeyBundle {
      * @throws KeyException
      */
     public boolean doRemote() throws UpdateFailed, KeyException {
-        // TODO Implement caching
-        // TODO allowing unverified SSL connections (e.g. no trusts)
         int statusCode;
-        HttpResponse response;
+
+        try {
+            HttpClientUtil.HttpFetchResponse response = HttpClientUtil.fetchUri(
+                new HttpGet(this.source), null);
+            if(response.getStatusCode() == 200) {
+                JSONObject jsonObject = (JSONObject) new JSONParser().parse(response.getBody());
+                JSONArray keys = (JSONArray) jsonObject.get("keys");
+                if (keys != null) {
+                    doKeys(keys);
+                } else {
+                    throw new UpdateFailed("No 'keys' keyword in JWKS");
+                }
+                this.lastUpdated = System.currentTimeMillis();
+                return true;
+            } else {
+                throw new UpdateFailed("Couldn't make GET request to url: " +
+                    this.source + " status " + response.getStatusCode());
+            }
+
+        } catch (ParseException e) {
+            throw new UpdateFailed("Unable to parse request : " + e.toString());
+        }
+        catch(IOException e) {
+            System.out.println("doRemote" + e.toString());
+            throw new UpdateFailed("Couldn't make GET request to url: " + this.source + " " + e.toString());
+        }
+
+
+/*
+        CloseableHttpClient httpclient = null;
+        CloseableHttpResponse response = null;
+        try {
+            httpclient = HttpClientUtil.instance();
+            HttpGet httpget = new HttpGet(this.source);
+            response = httpclient.execute(httpget);
+            statusCode = response.getStatusLine().getStatusCode();
+
+            if (statusCode == 304) {
+                this.timeOut = System.currentTimeMillis() + this.cacheTime;
+                this.lastUpdated = System.currentTimeMillis();
+
+                JSONArray keys = (JSONArray) this.impJwks.get("keys");
+                if (keys != null) {
+                    doKeys(keys);
+                } else {
+                    throw new UpdateFailed("No 'keys' keyword in JWKS");
+                }
+            } else if (statusCode == 200) {
+                this.timeOut = System.currentTimeMillis() + this.cacheTime;
+                this.impJwks = parseRemoteResponse(response);
+                if (!this.impJwks.keySet().contains("keys")) {
+                    throw new UpdateFailed(this.source);
+                }
+                JSONArray keys = (JSONArray) this.impJwks.get("keys");
+                if (keys != null) {
+                    doKeys(keys);
+                } else {
+                    throw new UpdateFailed("No 'keys' keyword in JWKS");
+                }
+            } else {
+                throw new UpdateFailed("Source: " + this.source + " status code: " + statusCode);
+            }
+            this.lastUpdated = System.currentTimeMillis();
+            return true;
+
+        } catch(UpdateFailed e) {
+            System.out.println(e.toString());
+            throw e;
+        }
+        catch(Exception e) {
+            System.out.println("doRemote" + e.toString());
+            throw new UpdateFailed("Couldn't make GET request to url: " + this.source + " " + e.toString());
+        } finally {
+            HttpClientUtil.closeResponse(response);
+        }
+*/
+
+        /*
         try {
             CloseableHttpClient httpclient = HttpClientUtil.instance();
+//            CloseableHttpClient httpclient = HttpClients.createDefault();
             HttpGet httpget = new HttpGet(this.source);
             response = httpclient.execute(httpget);
             statusCode = response.getStatusLine().getStatusCode();
@@ -405,6 +460,8 @@ public class KeyBundle {
 
         this.lastUpdated = System.currentTimeMillis();
         return true;
+        */
+
     }
 
     /**
@@ -455,7 +512,7 @@ public class KeyBundle {
             this.keys = new ArrayList<Key>();
             try {
                 if (!this.remote) {
-                    if (this.fileFormat.equals("jwks")) {
+                    if(this.fileFormat.equals("jwks") || this.fileFormat.equals("jwk")) {
                         this.doLocalJwk(this.source);
                     } else if (this.fileFormat.equals("der")) {
                         doLocalDer(source, keyType, keyUsage);
@@ -693,8 +750,6 @@ public class KeyBundle {
         try {
             KeyBundle keyBundle = new KeyBundle();
             keyBundle.keys.addAll(this.keys);
-            keyBundle.cacheTime = cacheTime;
-            keyBundle.verifySSL = verifySSL;
             if (!Utils.isNullOrEmpty(source)) {
                 keyBundle.source = source;
                 keyBundle.fileFormat = fileFormat;
