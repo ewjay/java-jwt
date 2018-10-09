@@ -331,13 +331,14 @@ public final class JWTCreator {
 
         /**
          * Creates a new JWT and encrypts it with the given key algorithm and enc algorithm
-         * @param algAlgorithm
-         * @param encAlgorithm
+         * @param algAlgorithm key encryption/wrap/agreement algorithm
+         * @param encAlgorithm content encryption algorithm
+         * @param deflate whether to deflate the plaintext before encryption
          * @return a new JWT token
          * @throws IllegalArgumentException
          * @throws JWTCreationException
          */
-        public String encrypt(Algorithm algAlgorithm, Algorithm encAlgorithm) throws IllegalArgumentException, JWTCreationException {
+        public String encrypt(Algorithm algAlgorithm, Algorithm encAlgorithm, boolean deflate) throws IllegalArgumentException, JWTCreationException {
             if (algAlgorithm == null) {
                 throw new IllegalArgumentException("The alg Algorithm cannot be null.");
             }
@@ -348,7 +349,14 @@ public final class JWTCreator {
             headerClaims.put(PublicClaims.ENC_ALGORITHM, encAlgorithm.getName());
             headerClaims.put(PublicClaims.TYPE, "JWT");
             headerClaims.putAll(algAlgorithm.getPubInfo());
-            return new JWTCreator(algAlgorithm, encAlgorithm, headerClaims, payloadClaims).encrypt();
+            if(deflate) {
+                headerClaims.put(PublicClaims.ZIP, "DEF");
+            }
+            return new JWTCreator(algAlgorithm, encAlgorithm, headerClaims, payloadClaims).encrypt(deflate);
+        }
+
+        public String encrypt(Algorithm algAlgorithm, Algorithm encAlgorithm) throws IllegalArgumentException, JWTCreationException {
+            return encrypt(algAlgorithm, encAlgorithm, false);
         }
 
         private void assertNonNull(String name) {
@@ -378,7 +386,7 @@ public final class JWTCreator {
     }
 
 
-    private String encrypt() throws EncryptionException {
+    private String encrypt(boolean deflate) throws EncryptionException {
         String header = Base64.encodeBase64URLSafeString(headerJson.getBytes(StandardCharsets.UTF_8));
         /*
           BASE64URL(UTF8(JWE Protected Header)) || '.' ||
@@ -422,9 +430,11 @@ public final class JWTCreator {
         String encodedTag = authenticatedCipherText.getBase64urlTag();
         return String.format("%s.%s.%s.%s.%s", header, encodedKey, encodeIV, encodeCipherText, encodedTag);
         */
+
+        System.out.printf("payload = %s\n", payloadJson);
         return new JWTEncryptor(algorithm, encAlgorithm,
             headerJson.getBytes(StandardCharsets.UTF_8),
-            payloadJson.getBytes(StandardCharsets.UTF_8)).encrypt();
+            payloadJson.getBytes(StandardCharsets.UTF_8)).encrypt(deflate);
     }
 
 }

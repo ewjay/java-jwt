@@ -18,10 +18,14 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.binary.StringUtils;
 
+import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.zip.Deflater;
 
 public class JWTEncryptor {
     private Algorithm alg;
@@ -164,6 +168,21 @@ public class JWTEncryptor {
          * @throws JWTCreationException
          */
         public String encrypt(Algorithm algAlgorithm, Algorithm encAlg) throws IllegalArgumentException, JWTCreationException {
+            return encrypt(algAlgorithm, encAlg, false);
+        }
+
+
+        /**
+         * Creates a new JWT, optionally deflates the payload and then encrypts it with the given
+         * key algorithm and enc algorithm
+         * @param algAlgorithm
+         * @param encAlg
+         * @return a new JWT token
+         * @throws IllegalArgumentException
+         * @throws JWTCreationException
+         */
+        public String encrypt(Algorithm algAlgorithm, Algorithm encAlg, boolean deflate)
+            throws IllegalArgumentException, JWTCreationException {
             if (algAlgorithm == null) {
                 throw new IllegalArgumentException("The alg Algorithm cannot be null.");
             }
@@ -174,9 +193,11 @@ public class JWTEncryptor {
             headerClaims.put(PublicClaims.ENC_ALGORITHM, encAlg.getName());
             headerClaims.put(PublicClaims.TYPE, "JWT");
             headerClaims.putAll(algAlgorithm.getPubInfo());
-            return new JWTEncryptor(algAlgorithm, encAlg, headerClaims, payload).encrypt();
+            if(deflate) {
+                headerClaims.put(PublicClaims.ZIP, "DEF");
+            }
+            return new JWTEncryptor(algAlgorithm, encAlg, headerClaims, payload).encrypt(deflate);
         }
-
 
         private void assertNonNull(String name) {
             if (name == null) {
@@ -193,7 +214,27 @@ public class JWTEncryptor {
         }
     }
 
-    public String encrypt() throws EncryptionException{
+    private byte[] deflate(byte[] input) {
+        System.out.printf("uncompressed output = %s\n", Hex.encodeHexString(input));
+        byte[] output = new byte[512];
+        Deflater compresser = new Deflater(Deflater.BEST_COMPRESSION);
+        compresser.setInput(input);
+        compresser.finish();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        while(!compresser.finished()) {
+            int compressedDataLength = compresser.deflate(output);
+            byteArrayOutputStream.write(output, 0, compressedDataLength);
+        }
+        compresser.end();
+        return byteArrayOutputStream.toByteArray();
+
+    }
+
+    public String encrypt() throws EncryptionException {
+        return encrypt(false);
+    }
+
+    public String encrypt(boolean deflate) throws EncryptionException{
         String encodedHeader = Base64.encodeBase64URLSafeString(headerBytes);
         /*
           BASE64URL(UTF8(JWE Protected Header)) || '.' ||
@@ -231,6 +272,12 @@ public class JWTEncryptor {
             encodedKey = Base64.encodeBase64URLSafeString(encryptedKey);
         }
         String encodeIV = Base64.encodeBase64URLSafeString(cipherParams.getIv());
+
+        if(deflate) {
+            // Compress the bytes
+            payloadBytes = deflate(payloadBytes);
+            System.out.printf("compressed output = %s\n", Hex.encodeHexString(payloadBytes));
+        }
         AuthenticatedCipherText authenticatedCipherText = encAlg.encrypt(payloadBytes, StringUtils.getBytesUtf8(encodedHeader));
         String encodeCipherText = authenticatedCipherText.getBase64urlCipherText();
         String encodedTag = authenticatedCipherText.getBase64urlTag();

@@ -2,18 +2,18 @@ package com.auth0.msg;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
-import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.JWTDecryptor;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.algorithms.AuthenticatedCipherText;
 import com.auth0.jwt.algorithms.CipherParams;
 import com.auth0.jwt.exceptions.DecryptionException;
-import com.auth0.jwt.exceptions.EncryptionException;
-import com.auth0.jwt.exceptions.TokenExpiredException;
+import com.auth0.jwt.impl.JWTParser;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.auth0.jwt.interfaces.Payload;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
-import org.bouncycastle.crypto.tls.CipherType;
+import org.apache.commons.codec.binary.StringUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -23,17 +23,14 @@ import org.junit.rules.ExpectedException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
-import java.nio.ShortBuffer;
 import java.nio.charset.Charset;
 import java.security.KeyPair;
-import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Map;
 
 public class AESCryptoTest {
@@ -74,7 +71,6 @@ public class AESCryptoTest {
         AuthenticatedCipherText cipherText  = aes.encrypt(data, aad);
         System.out.println("CipherText : " + Hex.encodeHexString(cipherText.getCipherText()));
         System.out.println("AuthTag : " + Hex.encodeHexString(cipherText.getTag()));
-
 
         byte[] plainText = aes.decrypt(cipherText.getCipherText(), cipherText.getTag(), aad);
         System.out.println("Plain : " + Hex.encodeHexString(plainText));
@@ -279,8 +275,43 @@ public class AESCryptoTest {
                 .verify(jwe);
             Map<String, com.auth0.jwt.interfaces.Claim> claims = jwt.getClaims();
             for (Map.Entry<String, Claim> entry : claims.entrySet()) {
-                System.out.printf("%s : %s\n", entry.getKey(), entry.getValue().asString());
+                if("sub".equals(entry.getKey()) ||
+                    "aud".equals(entry.getKey()) ||
+                    "iss".equals(entry.getKey())) {
+                    System.out.printf("%s : %s\n", entry.getKey(), entry.getValue().asString());
+                } else {
+                    System.out.printf("%s : %s\n", entry.getKey(), entry.getValue().asDate().toString());
+                }
             }
+            System.out.println("---------------------------");
+            JWTDecryptor decryptor = new JWTDecryptor(rsaAlg);
+            byte[] plainText = decryptor.decrypt(jwe);
+            String payloadStr = StringUtils.newStringUtf8(plainText);
+            final JWTParser converter = new JWTParser();
+            Payload payload = converter.parsePayload(payloadStr);
+            Map<String, com.auth0.jwt.interfaces.Claim> claims1 = payload.getClaims();
+            for (Map.Entry<String, Claim> entry : claims1.entrySet()) {
+                if("sub".equals(entry.getKey()) ||
+                    "aud".equals(entry.getKey()) ||
+                    "iss".equals(entry.getKey())) {
+                    System.out.printf("%s : %s\n", entry.getKey(), entry.getValue().asString());
+                    String val1 = entry.getValue().asString();
+                    String val2 = claims.get(entry.getKey()).asString();
+
+                    Assert.assertEquals(val1, val2);
+
+                } else {
+                    System.out.printf("%s : %s\n", entry.getKey(), entry.getValue().asDate());
+                    Date val1 = entry.getValue().asDate();
+                    Date val2 = claims.get(entry.getKey()).asDate();
+                    Assert.assertEquals(val1, val2);
+                }
+
+            }
+
+//            Assert.assertTrue(claims.equals(claims1));
+            System.out.println("\n\n\n");
+
         }
 
     }
@@ -323,6 +354,55 @@ public class AESCryptoTest {
                     .withSubject("Alice")
                     .withClaim("birthdate", "20180101");
                 String jwe = builder.encrypt(publicAlg, encAlg);
+                System.out.println(jwe);
+
+
+                DecodedJWT jwt = JWT.require(privateAlg).withIssuer("Mark").withAudience("Bob").withSubject("Alice").withClaim("gender", "F")
+                    .build()
+                    .verify(jwe);
+            }
+        }
+
+    }
+
+
+    @Test
+    public void testEncryptDecryptWithDeflate() throws Exception {
+
+        KeyPair keyPair = RSAKey.generateRSAKeyPair(2048);
+        RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+
+
+        String[] algs = new String[] {"RSA1_5", "RSA-OAEP", "RSA-OAEP-256"};
+        String[] encs = new String[] {"A128CBC-HS256", "A192CBC-HS384", "A256CBC-HS512", "A128GCM", "A192GCM", "A256GCM"};
+        for(String alg : algs) {
+            for(String enc : encs) {
+                System.out.printf("%s %s\n==========\n", alg, enc);
+
+                Algorithm publicAlg = null;
+                Algorithm privateAlg = null;
+                if(alg.equals("RSA1_5")) {
+                    publicAlg = Algorithm.RSA1_5(publicKey, null);
+                    privateAlg = Algorithm.RSA1_5(null, privateKey);
+                } else  if(alg.equals("RSA-OAEP")) {
+                    publicAlg = Algorithm.RSAOAEP(publicKey, null);
+                    privateAlg = Algorithm.RSAOAEP(null, privateKey);
+                } else if(alg.equals("RSA-OAEP-256")) {
+                    publicAlg = Algorithm.RSAOAEP256(publicKey, null);
+                    privateAlg = Algorithm.RSAOAEP256(null, privateKey);
+                }
+
+                CipherParams cipherParams = CipherParams.getInstance(enc);
+                Algorithm encAlg = Algorithm.getContentEncryptionAlg(enc, cipherParams);
+
+                JWTCreator.Builder builder = JWT.create()
+                    .withClaim("gender", "F")
+                    .withAudience("Bob")
+                    .withIssuer("Mark")
+                    .withSubject("Alice")
+                    .withClaim("birthdate", "20180101");
+                String jwe = builder.encrypt(publicAlg, encAlg, true);
                 System.out.println(jwe);
 
 

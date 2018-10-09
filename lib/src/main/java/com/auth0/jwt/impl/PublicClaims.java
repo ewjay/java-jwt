@@ -9,6 +9,7 @@ public interface PublicClaims {
     String CONTENT_TYPE = "cty";
     String TYPE = "typ";
     String KEY_ID = "kid";
+    String ZIP = "zip";
 
     //Payload
     String ISSUER = "iss";

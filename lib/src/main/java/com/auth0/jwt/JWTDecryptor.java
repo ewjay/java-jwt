@@ -8,21 +8,40 @@ import com.auth0.jwt.algorithms.ECDHESKeyWrapAlgorithm;
 import com.auth0.jwt.exceptions.DecryptionException;
 import com.auth0.jwt.exceptions.KeyAgreementException;
 import com.auth0.jwt.impl.JWTParser;
+import com.auth0.jwt.impl.NullClaim;
+import com.auth0.jwt.impl.PublicClaims;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.binary.StringUtils;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 public class JWTDecryptor {
     private Algorithm keyDecryptionAlg;
 
     public JWTDecryptor(Algorithm keyDecryptionAlg) {
         this.keyDecryptionAlg = keyDecryptionAlg;
+    }
+
+    private byte[] inflate(byte[] input) throws  DataFormatException{
+        Inflater decompresser = new Inflater();
+        decompresser.setInput(input);
+        byte[] result = new byte[512];
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        while(!decompresser.finished()) {
+            int resultLength = decompresser.inflate(result);
+            byteArrayOutputStream.write(result, 0, resultLength);
+        }
+        decompresser.end();
+        return byteArrayOutputStream.toByteArray();
     }
 
     public byte[] decrypt(String jws) throws DecryptionException {
@@ -55,19 +74,40 @@ public class JWTDecryptor {
         }
         List<String> aeshsAlgs = Arrays.asList("A128CBC-HS256", "A192CBC-HS384", "A256CBC-HS512");
         List<String> aesgcmAlgs = Arrays.asList("A128GCM", "A192GCM", "A256GCM");
+        byte[] decryptedContent = null;
         if(aeshsAlgs.contains(decodedJWT.getEncAlgorithm())) {
             int mid = decryptedKey.length / 2;
             byte[] encKey = Arrays.copyOfRange(decryptedKey, mid, decryptedKey.length);
             byte[] macKey = Arrays.copyOfRange(decryptedKey, 0, mid);
             CipherParams cipherParams = new CipherParams(encKey, macKey, iv);
             Algorithm encAlg = keyDecryptionAlg.getContentEncryptionAlg(decodedJWT.getEncAlgorithm(), cipherParams);
-            return encAlg.decrypt(cipherText, tag, headerBytes);
+            decryptedContent = encAlg.decrypt(cipherText, tag, headerBytes);
         } else if (aesgcmAlgs.contains(decodedJWT.getEncAlgorithm())) {
             CipherParams cipherParams = new CipherParams(decryptedKey, iv);
             Algorithm encAlg = Algorithm.getContentEncryptionAlg(decodedJWT.getEncAlgorithm(), cipherParams);
-            return encAlg.decrypt(cipherText, tag, headerBytes);
+            decryptedContent = encAlg.decrypt(cipherText, tag, headerBytes);
         } else {
             throw new DecryptionException(null, "Unknown enc alg : " + decodedJWT.getEncAlgorithm());
+        }
+        Claim zip = decodedJWT.getHeaderClaim(PublicClaims.ZIP);
+        if(!(zip == null || zip.isNull())) {
+            System.out.printf("decrypted output = %s\n", Hex.encodeHexString(decryptedContent));
+
+            if("DEF".equals(zip.asString())) {
+                // Decompress the bytes
+                try {
+                    byte[] inflated =  inflate(decryptedContent);
+                    System.out.printf("inflated output = %s\n", Hex.encodeHexString(inflated));
+
+                    return inflated;
+                } catch(DataFormatException e) {
+                    throw new DecryptionException(null, e);
+                }
+            } else {
+                throw new DecryptionException(null, "Unsupported zip value " + zip.asString());
+            }
+        } else {
+            return decryptedContent;
         }
     }
 

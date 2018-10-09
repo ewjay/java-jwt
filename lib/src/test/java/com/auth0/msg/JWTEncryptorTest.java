@@ -9,6 +9,7 @@ import com.auth0.jwt.algorithms.CipherParams;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.binary.StringUtils;
 import org.junit.Assert;
 import org.junit.Before;
@@ -22,6 +23,8 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 
 public class JWTEncryptorTest {
     @Rule
@@ -150,7 +153,7 @@ public class JWTEncryptorTest {
     }
 
     @Test
-    public void testEncryptedSignJWT() throws Exception {
+    public void testEncryptedSignJWTNoDeflate() throws Exception {
 
         KeyPair senderKeyPair = RSAKey.generateRSAKeyPair(2048);
         KeyPair receiverKeyPair = RSAKey.generateRSAKeyPair(2048);
@@ -192,4 +195,87 @@ public class JWTEncryptorTest {
         }
 
     }
+
+    @Test
+    public void testEncryptedSignJWTWithDeflate() throws Exception {
+
+        KeyPair senderKeyPair = RSAKey.generateRSAKeyPair(2048);
+        KeyPair receiverKeyPair = RSAKey.generateRSAKeyPair(2048);
+
+
+        JWTCreator.Builder builder = JWT.create()
+            .withClaim("gender", "F")
+            .withAudience("Bob")
+            .withIssuer("Mark")
+            .withSubject("Alice")
+            .withClaim("birthdate", "20180101");
+        Algorithm signAlg = Algorithm.RSA256(null, (RSAPrivateKey) senderKeyPair.getPrivate());
+        String jws = builder.sign(signAlg);
+        System.out.printf("jws = %s\n", jws);
+
+
+        Algorithm keyEncAlg = Algorithm.RSA1_5((RSAPublicKey) receiverKeyPair.getPublic(), null);
+        CipherParams cipherParams = CipherParams.getInstance("A256GCM");
+        Algorithm contentEncAlg = Algorithm.A256GCM(cipherParams);
+        String jwe = JWTEncryptor.init().withContentType("JWT")
+            .withPayload(jws.getBytes(StandardCharsets.UTF_8))
+            .encrypt(keyEncAlg, contentEncAlg, true);
+        System.out.printf("jwe = %s\n", jwe);
+
+
+        Algorithm keyDecAlg = Algorithm.RSA1_5(null, (RSAPrivateKey) receiverKeyPair.getPrivate());
+        DecodedJWT decodedJWS = JWT.decode(jwe).decrypt(keyDecAlg);
+        System.out.printf("Decrypted JWS = %s\n", decodedJWS.getToken());
+
+
+        Algorithm verifyAlg = Algorithm.RSA256((RSAPublicKey) senderKeyPair.getPublic(), null);
+        DecodedJWT jwt = JWT.require(verifyAlg).withIssuer("Mark").withAudience("Bob").withSubject("Alice").withClaim("gender", "F")
+            .build()
+            .verify(decodedJWS.getToken());
+
+        Map<String, Claim> claims = jwt.getClaims();
+        for (Map.Entry<String, Claim> entry : claims.entrySet()) {
+            System.out.printf("%s : %s\n", entry.getKey(), entry.getValue().asString());
+        }
+
+    }
+
+    @Test
+    public  void testInflater() throws Exception {
+//        String inputString = "{\"aud\":\"Bob\",\"sub\":\"Alice\",\"birthdate\":\"20180101\",\"gender\":\"F\",\"iss\":\"Mark\"}";
+        String inputString = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+        try {
+            // Encode a String into bytes
+            byte[] input = inputString.getBytes("UTF-8");
+
+            // Compress the bytes
+            byte[] output = new byte[100];
+            System.out.printf("uncompressed output = %s\n", Hex.encodeHexString(input));
+
+            Deflater compresser = new Deflater();
+            compresser.setInput(input);
+            compresser.finish();
+            int compressedDataLength = compresser.deflate(output);
+            System.out.printf("compressed output = %s\n", Hex.encodeHexString(Arrays.copyOf(output, compressedDataLength)));
+
+            // Decompress the bytes
+            Inflater decompresser = new Inflater();
+            decompresser.setInput(output, 0, compressedDataLength);
+            byte[] result = new byte[100];
+            int resultLength = decompresser.inflate(result);
+            decompresser.end();
+            System.out.printf("uncompressed output = %s\n", Hex.encodeHexString(Arrays.copyOf(result, resultLength)));
+            // Decode the bytes into a String
+            String outputString = new String(result, 0, resultLength, "UTF-8");
+
+            System.out.printf("output = %s\n", outputString);
+        } catch(java.io.UnsupportedEncodingException ex) {
+            // handle
+        } catch (java.util.zip.DataFormatException ex) {
+            // handle
+        }
+
+    }
+
 }
