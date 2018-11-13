@@ -265,6 +265,11 @@ public class ECDHESCryptoTest {
         byte[] expectedDerivedKey = TestUtils.convertShortArrayToByteArray(expectedDerivedKeyShorts);
         System.out.println("Expected Derived key = " + Hex.encodeHexString(expectedDerivedKey));
         Assert.assertTrue(Arrays.equals(derivedKey, expectedDerivedKey));
+
+
+        Algorithm ecdhReceiver = Algorithm.ECDH_ES((ECPrivateKey) receiverKey.getKey(true), (ECPublicKey) receiverKey.getKey(false), (ECPublicKey) senderKey.getKey(false), "Alice", "Bob", "A128GCM", 16);
+        byte[] receiverDerivedKey = ecdhReceiver.generateDerivedKey();
+        Assert.assertTrue(Arrays.equals(receiverDerivedKey, expectedDerivedKey));
     }
 
     @Test
