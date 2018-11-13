@@ -229,7 +229,7 @@ public class KeyJar {
             List<Key> tempKeyList2 = new ArrayList<>();
             List<Key> keyList = new ArrayList<>();
             for(Key key : keyListToReturn) {
-                if(key instanceof gECKey) {
+                if(key instanceof ECKey) {
                     ECKey ecKey = (ECKey) key;
                     if (!name.equals(ecKey.getCrv()))
                         continue;
