@@ -224,12 +224,12 @@ public class KeyJar {
         }
 
         // if elliptic curve have to check I have a key of the right curve
-        if("EC".equals(keyType) && args.containsKey("alg")) {
+        if("EC".equalsIgnoreCase(keyType) && args != null && args.containsKey("alg")) {
             String name = "P-" + args.get("alg").substring(2);
             List<Key> tempKeyList2 = new ArrayList<>();
             List<Key> keyList = new ArrayList<>();
             for(Key key : keyListToReturn) {
-                if(key instanceof ECKey) {
+                if(key instanceof gECKey) {
                     ECKey ecKey = (ECKey) key;
                     if (!name.equals(ecKey.getCrv()))
                         continue;
@@ -240,7 +240,7 @@ public class KeyJar {
             keyListToReturn = tempKeyList2;
         }
 
-        if("enc".equals(use) && "oct".equals(keyType) && !Utils.isNullOrEmpty(owner)) {
+        if("enc".equals(use) && "OCT".equalsIgnoreCase(keyType) && !Utils.isNullOrEmpty(owner)) {
             for(KeyBundle keyBundle : this.issuerKeys.get("")) {
                 for(Key key : keyBundle.get(keyType)) {
                     if(key.getInactiveSince() != 0)
