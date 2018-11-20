@@ -339,7 +339,12 @@ public class KeyJar {
     }
 
 
-    private String algorithmToKeytypeForJWS(String algorithm) {
+    /**
+     * Gets the keytype for the specified JWS algorithm
+     * @param algorithm JWS algorithm string
+     * @return keytype string as specified by RFC 7518
+     */
+    public String algorithmToKeytypeForJWS(String algorithm) {
         if(algorithm == null || algorithm.toLowerCase().equals("none")) {
             return "none";
         } else if(algorithm.startsWith("RS") || algorithm.startsWith("PS")) {
@@ -353,7 +358,12 @@ public class KeyJar {
         }
     }
 
-    private String algorithmToKeytypeForJWE(String algorithm) {
+    /**
+     * Gets the keytype for the specified JWE algorithm
+     * @param algorithm JWE algorithm string
+     * @return keytype string as specified by RFC 7518
+     */
+    public String algorithmToKeytypeForJWE(String algorithm) {
         if(algorithm.startsWith("RSA")) {
             return "RSA";
         } else if(algorithm.startsWith("A")) {
