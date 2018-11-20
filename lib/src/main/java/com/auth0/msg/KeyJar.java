@@ -240,7 +240,7 @@ public class KeyJar {
             keyListToReturn = tempKeyList2;
         }
 
-        if("enc".equals(use) && "OCT".equalsIgnoreCase(keyType) && !Utils.isNullOrEmpty(owner)) {
+        if("enc".equals(use) && "oct".equalsIgnoreCase(keyType) && !Utils.isNullOrEmpty(owner)) {
             for(KeyBundle keyBundle : this.issuerKeys.get("")) {
                 for(Key key : keyBundle.get(keyType)) {
                     if(key.getInactiveSince() != 0)

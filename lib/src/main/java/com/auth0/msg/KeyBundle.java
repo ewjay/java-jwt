@@ -224,7 +224,7 @@ public class KeyBundle {
                     String x5t= (String) key.get("x5t");
                     String x5u = (String) key.get("x5u");
 
-                    if("RSA".equals(keyType)) {
+                    if("RSA".equalsIgnoreCase(keyType)) {
                         String n = (String) key.get("n");
                         String e = (String) key.get("e");
                         String d = (String) key.get("d");
@@ -237,13 +237,13 @@ public class KeyBundle {
 
                         keyInstance = new RSAKey(alg, use, kid, x5c,x5t, x5u, null,
                             n, e, d, p, q, dp, dq, qi, oth, null);
-                    } else if("EC".equals(keyType)) {
+                    } else if("EC".equalsIgnoreCase(keyType)) {
                         String x = (String) key.get("x");
                         String y = (String) key.get("y");
                         String d = (String) key.get("d");
                         String curve = (String) key.get("crv");
                         keyInstance = new ECKey(alg, use, kid, null, curve, x, y, d, null);
-                    } else if("oct".equals(keyType)) {
+                    } else if("oct".equalsIgnoreCase(keyType)) {
                         String k = (String) key.get("k");
                         keyInstance = new SYMKey(alg, use, kid, null, x5c, x5t, x5u, k, null);
                     } else

@@ -614,7 +614,7 @@ public class KeyJarTest {
         JSONObject jsonObject = (JSONObject) jsonParser.parse(JWKS);
         KeyJar keyJar = new KeyJar();
         keyJar.importJwks((Map<String, Object>)jsonObject, "");
-        List<Key> symKeys = keyJar.getKeys("enc", "OCT", "", "", null);
+        List<Key> symKeys = keyJar.getKeys("enc", "oct", "", "", null);
         List<Key> rsaKeys = keyJar.getKeys("enc", "RSA", "", "", null);
         List<Key> ecKeys = keyJar.getKeys("", "EC", "", "", null);
         Assert.assertEquals(1, symKeys.size());
