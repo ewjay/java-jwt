@@ -78,7 +78,7 @@ public class AESHSAlgorithmTest {
     public void shouldFailWithBadTag() throws Exception {
         exception.expect(DecryptionException.class);
         CipherParams cipherParams = CipherParams.getInstance("A128CBC-HS256");
-        Algorithm encAlg2 = Algorithm.A128CBC_HS256(cipherParams);
+        JWEContentEncryptionAlgorithm encAlg2 = Algorithm.A128CBC_HS256(cipherParams);
         byte[] content = "Test".getBytes();
         byte[] tag = "testTag".getBytes();
         AuthenticatedCipherText authenticatedCipherText = encAlg2.encrypt(content, tag);

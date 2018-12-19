@@ -8,7 +8,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 
 import javax.crypto.spec.SecretKeySpec;
 
-public class AESKeyWrapAlgorithm extends Algorithm {
+public class AESKeyWrapAlgorithm extends JWEKeyWrapAlgorithm {
     private final CryptoHelper crypto;
     private byte[] keywrapKey;
 
@@ -39,16 +39,6 @@ public class AESKeyWrapAlgorithm extends Algorithm {
 
     AESKeyWrapAlgorithm(String id, String algorithm, byte[] keywrapKey) throws IllegalArgumentException {
         this(new CryptoHelper(), id, algorithm, keywrapKey);
-    }
-
-    @Override
-    public byte[] sign(byte[] contentBytes) throws SignatureGenerationException {
-        return new byte[0];
-    }
-
-    @Override
-    public void verify(DecodedJWT jwt) throws SignatureVerificationException {
-
     }
 
     @Override

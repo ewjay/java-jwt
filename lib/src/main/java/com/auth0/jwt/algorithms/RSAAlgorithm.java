@@ -1,28 +1,19 @@
 package com.auth0.jwt.algorithms;
 
-import com.auth0.jwt.exceptions.DecryptionException;
-import com.auth0.jwt.exceptions.EncryptionException;
 import com.auth0.jwt.exceptions.SignatureGenerationException;
 import com.auth0.jwt.exceptions.SignatureVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.RSAKeyProvider;
 import org.apache.commons.codec.binary.Base64;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.OAEPParameterSpec;
-import javax.crypto.spec.PSource;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.MGF1ParameterSpec;
 
-class RSAAlgorithm extends Algorithm {
+class RSAAlgorithm extends JWSAlgorithm {
 
     private final RSAKeyProvider keyProvider;
     private final CryptoHelper crypto;
@@ -99,35 +90,5 @@ class RSAAlgorithm extends Algorithm {
                 return null;
             }
         };
-    }
-
-
-    @Override
-    public byte[] encrypt(byte[] contentBytes) throws EncryptionException{
-        try {
-            if("RSA-OAEP-256".equals(getName())) {
-                OAEPParameterSpec oaepParams = new OAEPParameterSpec("SHA-256", "MGF1", MGF1ParameterSpec.SHA256, PSource.PSpecified.DEFAULT);
-                return crypto.encrypt(getDescription(), keyProvider.getPublicKeyById(""), oaepParams, contentBytes, null);
-            } else {
-                return crypto.encrypt(getDescription(), keyProvider.getPublicKeyById(""),contentBytes , null, null);
-            }
-        } catch(NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException | InvalidAlgorithmParameterException e) {
-            throw new EncryptionException(this, e);
-        }
-    }
-
-
-    @Override
-    public byte[] decrypt(byte[] cipherText) throws DecryptionException{
-        try {
-            if("RSA-OAEP-256".equals(getName())) {
-                OAEPParameterSpec oaepParams = new OAEPParameterSpec("SHA-256", "MGF1", MGF1ParameterSpec.SHA256, PSource.PSpecified.DEFAULT);
-                return crypto.decrypt(getDescription(), keyProvider.getPrivateKey(), oaepParams, cipherText, null);
-            } else {
-                return crypto.decrypt(getDescription(), keyProvider.getPrivateKey(), cipherText, null, null);
-            }
-        } catch(NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException | InvalidAlgorithmParameterException e) {
-            throw new DecryptionException(this, e);
-        }
     }
 }

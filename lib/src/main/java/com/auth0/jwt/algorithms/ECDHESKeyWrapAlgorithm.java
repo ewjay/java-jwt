@@ -4,12 +4,18 @@ import com.auth0.jwt.exceptions.DecryptionException;
 import com.auth0.jwt.exceptions.EncryptionException;
 import com.auth0.jwt.exceptions.KeyAgreementException;
 import com.auth0.jwt.interfaces.ECDSAKeyProvider;
+import com.auth0.msg.ECKey;
+import com.auth0.msg.Utils;
 
-public class ECDHESKeyWrapAlgorithm extends ECDHESAlgorithm {
+import java.util.HashMap;
+import java.util.Map;
+
+public class ECDHESKeyWrapAlgorithm extends JWEKeyWrapAlgorithm {
+    private JWEKeyAgreementAlgorithm keyAgreementAlgorithm;
 
     ECDHESKeyWrapAlgorithm(CryptoHelper crypto, String id, String algorithm, ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws IllegalArgumentException {
-        super(crypto, id, algorithm, senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
-
+        super(id, algorithm);
+        keyAgreementAlgorithm = (JWEKeyAgreementAlgorithm) Algorithm.ECDH_ES(senderProvider, receiverProvider, partyUInfo, partyVInfo, algId);
     }
 
     ECDHESKeyWrapAlgorithm(String id, String algorithm, ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws IllegalArgumentException {
@@ -19,8 +25,8 @@ public class ECDHESKeyWrapAlgorithm extends ECDHESAlgorithm {
     @Override
     public byte[] wrap(byte[] contentBytes) throws EncryptionException {
         try {
-            byte[] kek = generateDerivedKey();
-            Algorithm algorithm = Algorithm.getKeyWrapAlg(getName().substring(8), kek);
+            byte[] kek = keyAgreementAlgorithm.generateDerivedKey();
+            JWEKeyWrapAlgorithm algorithm = (JWEKeyWrapAlgorithm) Algorithm.getKeyWrapAlg(getName().substring(8), kek);
             if(algorithm != null) {
                 return algorithm.wrap(contentBytes);
             } else {
@@ -34,8 +40,8 @@ public class ECDHESKeyWrapAlgorithm extends ECDHESAlgorithm {
     @Override
     public byte[] unwrap(byte[] cipherText) throws DecryptionException {
         try {
-            byte[] kek = generateDerivedKey();
-            Algorithm algorithm = Algorithm.getKeyWrapAlg(getName().substring(8), kek);
+            byte[] kek = keyAgreementAlgorithm.generateDerivedKey();
+            JWEKeyWrapAlgorithm algorithm = (JWEKeyWrapAlgorithm)Algorithm.getKeyWrapAlg(getName().substring(8), kek);
             if(algorithm != null) {
                 return algorithm.unwrap(cipherText);
             } else {
@@ -44,5 +50,10 @@ public class ECDHESKeyWrapAlgorithm extends ECDHESAlgorithm {
         } catch(KeyAgreementException e) {
             throw new DecryptionException(this, e);
         }
+    }
+
+    @Override
+    public Map<String, Object> getPubInfo() {
+        return keyAgreementAlgorithm.getPubInfo();
     }
 }

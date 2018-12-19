@@ -5,7 +5,7 @@ import com.auth0.jwt.exceptions.SignatureVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.apache.commons.codec.binary.Base64;
 
-class NoneAlgorithm extends Algorithm {
+class NoneAlgorithm extends JWSAlgorithm {
 
     NoneAlgorithm() {
         super("none", "none");

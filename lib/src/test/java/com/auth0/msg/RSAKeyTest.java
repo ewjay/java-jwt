@@ -13,12 +13,17 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import java.io.IOException;
+import java.math.BigInteger;
+import java.security.KeyFactory;
 import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPrivateKeySpec;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -353,6 +358,53 @@ public class RSAKeyTest {
                 Assert.assertTrue(pubParts2.equals(pubParts3));
             }
         }
+
+
+
+    }
+
+    @Test
+    public void testSerializeRSAPrivateKeyWithN() throws IOException, JWKException ,
+        SerializationNotPossible, NoSuchAlgorithmException, InvalidKeySpecException {
+        PrivateKey privateKey = KeyUtils.getRSAPrivateKeyFromFile(PRIVATE_KEY_FILE);
+        RSAKey rsaKey = RSAKey.loadKey(privateKey);
+        Assert.assertFalse(Utils.isNullOrEmpty(rsaKey.getD()));
+        Map<String, Object> serializedKey = rsaKey.serialize(true);
+
+        System.out.println("serialized key = " + serializedKey.toString());
+        System.out.printf("n = %s\n", (String)serializedKey.get(("n")));
+        System.out.printf("e = %s\n", (String)serializedKey.get(("e")));
+        System.out.printf("d = %s\n", (String)serializedKey.get(("d")));
+        System.out.printf("p = %s\n", (String)serializedKey.get(("p")));
+        System.out.printf("q = %s\n", (String)serializedKey.get(("q")));
+        System.out.printf("dp = %s\n", (String)serializedKey.get(("dp")));
+        System.out.printf("dq = %s\n", (String)serializedKey.get(("dq")));
+        System.out.printf("qi = %s\n", (String)serializedKey.get(("qi")));
+
+        RSAKey restoredKey = RSAKey.privateKeyBuilder(
+            (String)serializedKey.get(("n")),
+            (String)serializedKey.get(("e")),
+            (String)serializedKey.get(("d")),
+            (String)serializedKey.get(("p")),
+            (String)serializedKey.get(("q")),
+            (String)serializedKey.get(("dp")),
+            (String)serializedKey.get(("dq")),
+            (String)serializedKey.get(("qi")),
+            (List<Map<String, String>>)serializedKey.get(("oth"))).build();
+
+        Assert.assertEquals(rsaKey, restoredKey);
+
+        BigInteger nModulus = Utils.base64urlToBigInt((String)serializedKey.get(("n")));
+        BigInteger dExponent = Utils.base64urlToBigInt((String)serializedKey.get(("d")));
+
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        RSAPrivateKeySpec rsaPrivateKeySpec = new RSAPrivateKeySpec(nModulus, dExponent);
+//        RSAPrivateKey rsaPrivateKey = (RSAPrivateKey) keyFactory.generatePrivate(rsaPrivateKeySpec);
+        PrivateKey rsaPrivateKey = keyFactory.generatePrivate(rsaPrivateKeySpec);
+        if(rsaPrivateKey instanceof  RSAPrivateCrtKey) {
+            System.out.println("Hello");
+        }
+
 
 
 

@@ -1,6 +1,7 @@
 package com.auth0.msg;
 
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.algorithms.JWEKeyEncryptionAlgorithm;
 import org.apache.commons.codec.binary.Hex;
 import org.junit.Assert;
 import org.junit.Before;
@@ -39,7 +40,7 @@ public class RSACryptoTest {
         RSAPublicKey rsaPublicKey = (RSAPublicKey) keyPair.getPublic();
 
         for(int i = 0; i < 3; i++) {
-            Algorithm algorithm =  Algorithm.RSA1_5(rsaPublicKey, rsaPrivateKey);
+            JWEKeyEncryptionAlgorithm algorithm =  Algorithm.RSA1_5(rsaPublicKey, rsaPrivateKey);
             byte[] cipherText = algorithm.encrypt(bytes);
             System.out.println(Hex.encodeHexString(cipherText));
 
@@ -63,7 +64,7 @@ public class RSACryptoTest {
         RSAPublicKey rsaPublicKey = (RSAPublicKey) keyPair.getPublic();
 
         for(int i = 0; i < 3; i++) {
-            Algorithm algorithm =  Algorithm.RSAOAEP(rsaPublicKey, rsaPrivateKey);
+            JWEKeyEncryptionAlgorithm algorithm =  Algorithm.RSAOAEP(rsaPublicKey, rsaPrivateKey);
             byte[] cipherText = algorithm.encrypt(bytes);
             System.out.println(Hex.encodeHexString(cipherText));
 
@@ -86,7 +87,7 @@ public class RSACryptoTest {
         RSAPublicKey rsaPublicKey = (RSAPublicKey) keyPair.getPublic();
 
         for(int i = 0; i < 3; i++) {
-            Algorithm algorithm =  Algorithm.RSAOAEP256(rsaPublicKey, rsaPrivateKey);
+            JWEKeyEncryptionAlgorithm algorithm =  Algorithm.RSAOAEP256(rsaPublicKey, rsaPrivateKey);
             byte[] cipherText = algorithm.encrypt(bytes);
             System.out.println(Hex.encodeHexString(cipherText));
 

@@ -46,10 +46,10 @@ public class AESKeyWrapAlgorithmTest {
         byte[] kek = new byte[16];
         SecureRandom secureRandom = new SecureRandom();
         secureRandom.nextBytes(kek);
-        Algorithm algorithm = Algorithm.AES128Keywrap(kek);
+        JWEKeyWrapAlgorithm algorithm = Algorithm.AES128Keywrap(kek);
         byte[] wrappedKey = algorithm.wrap("hello".getBytes());
         secureRandom.nextBytes(kek);
-        Algorithm algorithm2 = Algorithm.AES128Keywrap(kek);
+        JWEKeyWrapAlgorithm algorithm2 = Algorithm.AES128Keywrap(kek);
 
         byte[] unwrappedKey = algorithm2.unwrap(wrappedKey);
     }
@@ -60,10 +60,10 @@ public class AESKeyWrapAlgorithmTest {
         byte[] kek = new byte[16];
         SecureRandom secureRandom = new SecureRandom();
         secureRandom.nextBytes(kek);
-        Algorithm algorithm = Algorithm.AES128Keywrap(kek);
+        JWEKeyWrapAlgorithm algorithm = Algorithm.AES128Keywrap(kek);
         byte[] wrappedKey = algorithm.wrap("helllllo".getBytes());
         secureRandom.nextBytes(kek);
-        Algorithm algorithm2 = Algorithm.AES128Keywrap(kek);
+        JWEKeyWrapAlgorithm algorithm2 = Algorithm.AES128Keywrap(kek);
 
         byte[] unwrappedKey = algorithm2.unwrap(wrappedKey);
     }
@@ -73,7 +73,7 @@ public class AESKeyWrapAlgorithmTest {
         byte[] kek = new byte[16];
         SecureRandom secureRandom = new SecureRandom();
         secureRandom.nextBytes(kek);
-        Algorithm algorithm = Algorithm.AES128Keywrap(kek);
+        JWEKeyWrapAlgorithm algorithm = Algorithm.AES128Keywrap(kek);
         byte[] content = "helllllo".getBytes();
         byte[] wrappedKey = algorithm.wrap(content);
         byte[] unwrappedKey = algorithm.unwrap(wrappedKey);

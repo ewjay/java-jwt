@@ -2,10 +2,6 @@ package com.auth0.jwt.algorithms;
 
 import com.auth0.jwt.exceptions.DecryptionException;
 import com.auth0.jwt.exceptions.EncryptionException;
-import com.auth0.jwt.exceptions.SignatureGenerationException;
-import com.auth0.jwt.exceptions.SignatureVerificationException;
-import com.auth0.jwt.interfaces.DecodedJWT;
-import org.apache.commons.codec.binary.Hex;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -18,7 +14,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-public class AESGCMAlgorithm extends Algorithm {
+public class AESGCMAlgorithm extends JWEContentEncryptionAlgorithm {
     private final CryptoHelper crypto;
     private int keySize;
     private CipherParams cipherParams;
@@ -49,16 +45,6 @@ public class AESGCMAlgorithm extends Algorithm {
 
     public CipherParams getCipherParams() {
         return cipherParams;
-    }
-
-    @Override
-    public void verify(DecodedJWT jwt) throws SignatureVerificationException {
-
-    }
-
-    @Override
-    public byte[] sign(byte[] contentBytes) throws SignatureGenerationException {
-        return null;
     }
 
     @Override

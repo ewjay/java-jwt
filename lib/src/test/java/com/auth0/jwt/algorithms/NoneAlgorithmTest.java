@@ -18,7 +18,7 @@ public class NoneAlgorithmTest {
 
     @Test
     public void shouldPassNoneVerification() throws Exception {
-        Algorithm algorithm = Algorithm.none();
+        JWSAlgorithm algorithm = Algorithm.none();
         String jwt = "eyJhbGciOiJub25lIiwiY3R5IjoiSldUIn0.eyJpc3MiOiJhdXRoMCJ9.";
         algorithm.verify(JWT.decode(jwt));
     }
@@ -28,7 +28,7 @@ public class NoneAlgorithmTest {
         exception.expect(JWTDecodeException.class);
         exception.expectMessage("The token was expected to have 3 parts, but got 2.");
         String jwt = "eyJhbGciOiJub25lIiwiY3R5IjoiSldUIn0.eyJpc3MiOiJhdXRoMCJ9";
-        Algorithm algorithm = Algorithm.none();
+        JWSAlgorithm algorithm = Algorithm.none();
         algorithm.verify(JWT.decode(jwt));
     }
 
@@ -37,7 +37,7 @@ public class NoneAlgorithmTest {
         exception.expect(SignatureVerificationException.class);
         exception.expectMessage("The Token's Signature resulted invalid when verified using the Algorithm: none");
         String jwt = "eyJhbGciOiJub25lIiwiY3R5IjoiSldUIn0.eyJpc3MiOiJhdXRoMCJ9.Ox-WRXRaGAuWt2KfPvWiGcCrPqZtbp_4OnQzZXaTfss";
-        Algorithm algorithm = Algorithm.none();
+        JWSAlgorithm algorithm = Algorithm.none();
         algorithm.verify(JWT.decode(jwt));
     }
 

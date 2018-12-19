@@ -1,6 +1,7 @@
 package com.auth0.jwt;
 
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.algorithms.JWSAlgorithm;
 import com.auth0.jwt.exceptions.*;
 import com.auth0.jwt.impl.PublicClaims;
 import com.auth0.jwt.interfaces.Claim;
@@ -359,7 +360,7 @@ public final class JWTVerifier {
                 jwt.decrypt(algorithm);
             }
         } else {
-            algorithm.verify(jwt);
+            ((JWSAlgorithm)algorithm).verify(jwt);
         }
         verifyClaims(jwt, claims);
         return jwt;

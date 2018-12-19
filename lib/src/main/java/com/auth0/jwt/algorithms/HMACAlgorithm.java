@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 
-class HMACAlgorithm extends Algorithm {
+class HMACAlgorithm extends JWSAlgorithm {
 
     private final CryptoHelper crypto;
     private final byte[] secret;

@@ -2,10 +2,6 @@ package com.auth0.jwt.algorithms;
 
 import com.auth0.jwt.exceptions.DecryptionException;
 import com.auth0.jwt.exceptions.EncryptionException;
-import com.auth0.jwt.exceptions.SignatureGenerationException;
-import com.auth0.jwt.exceptions.SignatureVerificationException;
-import com.auth0.jwt.interfaces.DecodedJWT;
-import org.apache.commons.codec.binary.Hex;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -18,12 +14,12 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-public class AESHSAlgorithm extends Algorithm {
+public class AESHSAlgorithm extends JWEContentEncryptionAlgorithm {
 
     private final CryptoHelper crypto;
     private int keySize;
     private CipherParams cipherParams;
-    private Algorithm hmacAlg;
+    private JWSAlgorithm hmacAlg;
     private int hmacByteLength;
 
     //Visible for testing
@@ -38,11 +34,11 @@ public class AESHSAlgorithm extends Algorithm {
         keySize = Integer.parseInt(id.substring(1, 4));
         String hmacAlgId = id.substring(8);
         if("HS256".equals(hmacAlgId)) {
-            hmacAlg = Algorithm.HMAC256(cipherParams.getMacKey());
+            hmacAlg = (JWSAlgorithm) Algorithm.HMAC256(cipherParams.getMacKey());
         } else if("HS384".equals(hmacAlgId)) {
-            hmacAlg = Algorithm.HMAC384(cipherParams.getMacKey());
+            hmacAlg = (JWSAlgorithm) Algorithm.HMAC384(cipherParams.getMacKey());
         } else if("HS512".equals(hmacAlgId)) {
-            hmacAlg = Algorithm.HMAC512(cipherParams.getMacKey());
+            hmacAlg = (JWSAlgorithm) Algorithm.HMAC512(cipherParams.getMacKey());
         } else {
             throw new IllegalArgumentException("Invalid algorithm");
         }
@@ -67,16 +63,6 @@ public class AESHSAlgorithm extends Algorithm {
 
     public CipherParams getCipherParams() {
         return cipherParams;
-    }
-
-    @Override
-    public byte[] sign(byte[] contentBytes) throws SignatureGenerationException {
-        return new byte[0];
-    }
-
-    @Override
-    public void verify(DecodedJWT jwt) throws SignatureVerificationException {
-
     }
 
     @Override

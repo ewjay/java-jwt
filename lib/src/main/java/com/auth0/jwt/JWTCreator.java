@@ -1,16 +1,9 @@
 package com.auth0.jwt;
 
-import com.auth0.jwt.algorithms.AESGCMAlgorithm;
-import com.auth0.jwt.algorithms.AESHSAlgorithm;
-import com.auth0.jwt.algorithms.AESKeyWrapAlgorithm;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.algorithms.AuthenticatedCipherText;
-import com.auth0.jwt.algorithms.CipherParams;
-import com.auth0.jwt.algorithms.ECDHESAlgorithm;
-import com.auth0.jwt.algorithms.ECDHESKeyWrapAlgorithm;
+import com.auth0.jwt.algorithms.JWSAlgorithm;
 import com.auth0.jwt.exceptions.EncryptionException;
 import com.auth0.jwt.exceptions.JWTCreationException;
-import com.auth0.jwt.exceptions.KeyAgreementException;
 import com.auth0.jwt.exceptions.SignatureGenerationException;
 import com.auth0.jwt.impl.ClaimsHolder;
 import com.auth0.jwt.impl.PayloadSerializer;
@@ -20,10 +13,8 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.codec.binary.Hex;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -378,60 +369,14 @@ public final class JWTCreator {
         String header = Base64.encodeBase64URLSafeString(headerJson.getBytes(StandardCharsets.UTF_8));
         String payload = Base64.encodeBase64URLSafeString(payloadJson.getBytes(StandardCharsets.UTF_8));
         String content = String.format("%s.%s", header, payload);
-
-        byte[] signatureBytes = algorithm.sign(content.getBytes(StandardCharsets.UTF_8));
+        byte[] signatureBytes = ((JWSAlgorithm)algorithm).sign(content.getBytes(StandardCharsets.UTF_8));
         String signature = Base64.encodeBase64URLSafeString((signatureBytes));
-
         return String.format("%s.%s", content, signature);
     }
 
 
     private String encrypt(boolean deflate) throws EncryptionException {
         String header = Base64.encodeBase64URLSafeString(headerJson.getBytes(StandardCharsets.UTF_8));
-        /*
-          BASE64URL(UTF8(JWE Protected Header)) || '.' ||
-          BASE64URL(JWE Encrypted Key) || '.' ||
-          BASE64URL(JWE Initialization Vector) || '.' ||
-          BASE64URL(JWE Ciphertext) || '.' ||
-          BASE64URL(JWE Authentication Tag)
-         */
-
-        /*
-        byte[] encryptedKey = new byte[0];
-        String encodedKey;
-        AESHSAlgorithm aeshsAlgorithm;
-        AESGCMAlgorithm aesgcmAlgorithm;
-        CipherParams cipherParams;
-        if(encAlgorithm instanceof AESHSAlgorithm) {
-            aeshsAlgorithm = (AESHSAlgorithm) encAlgorithm;
-            // cipherParams should hold values for keyagreement algs also
-            cipherParams = aeshsAlgorithm.getCipherParams();
-        } else if(encAlgorithm instanceof  AESGCMAlgorithm) {
-            aesgcmAlgorithm = (AESGCMAlgorithm) encAlgorithm;
-            cipherParams = aesgcmAlgorithm.getCipherParams();
-        } else {
-            throw new EncryptionException(encAlgorithm, "Unsupported enc algorithm");
-        }
-        if(algorithm instanceof ECDHESAlgorithm && !(algorithm instanceof ECDHESKeyWrapAlgorithm)) {
-            encodedKey = "";
-        } else {
-            // key encryption or key wrap
-            if(algorithm instanceof AESKeyWrapAlgorithm ||
-                algorithm instanceof ECDHESKeyWrapAlgorithm) {
-                encryptedKey = algorithm.wrap(cipherParams.getMacEncKey());
-            } else {
-                encryptedKey = algorithm.encrypt(cipherParams.getMacEncKey());
-            }
-            encodedKey = Base64.encodeBase64URLSafeString(encryptedKey);
-        }
-        String encodeIV = Base64.encodeBase64URLSafeString(cipherParams.getIv());
-        AuthenticatedCipherText authenticatedCipherText = encAlgorithm.encrypt(payloadJson.getBytes(StandardCharsets.UTF_8), header.getBytes(StandardCharsets.UTF_8));
-        String encodeCipherText = authenticatedCipherText.getBase64urlCipherText();
-        String encodedTag = authenticatedCipherText.getBase64urlTag();
-        return String.format("%s.%s.%s.%s.%s", header, encodedKey, encodeIV, encodeCipherText, encodedTag);
-        */
-
-        System.out.printf("payload = %s\n", payloadJson);
         return new JWTEncryptor(algorithm, encAlgorithm,
             headerJson.getBytes(StandardCharsets.UTF_8),
             payloadJson.getBytes(StandardCharsets.UTF_8)).encrypt(deflate);

@@ -5,6 +5,8 @@ import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.algorithms.CipherParams;
 import com.auth0.jwt.algorithms.ConcatKDF;
+import com.auth0.jwt.algorithms.JWEKeyAgreementAlgorithm;
+import com.auth0.jwt.algorithms.JWEKeyWrapAlgorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.apache.commons.codec.binary.Hex;
 import org.junit.Assert;
@@ -204,7 +206,7 @@ public class ECDHESCryptoTest {
             "e8lnCO-AlStT-NJVX-crhB7QRYhiix03illJOVAOyck",
             "VEmDZpDXXK8p8N0Cndsxs924q6nS1RXFASRl6BfUqdw").build();
 
-        Algorithm ecdh = Algorithm.ECDH_ES((ECPrivateKey) senderKey.getKey(true), (ECPublicKey) senderKey.getKey(false), (ECPublicKey) receiverKey.getKey(false), "Alice", "Bob", "A128GCM", 16);
+        JWEKeyAgreementAlgorithm ecdh = Algorithm.ECDH_ES((ECPrivateKey) senderKey.getKey(true), (ECPublicKey) senderKey.getKey(false), (ECPublicKey) receiverKey.getKey(false), "Alice", "Bob", "A128GCM", 16);
 
         byte[] agreementKey = ecdh.generateAgreementKey();
         System.out.println("Agreement key = " + Hex.encodeHexString(agreementKey));
@@ -256,7 +258,7 @@ public class ECDHESCryptoTest {
             "e8lnCO-AlStT-NJVX-crhB7QRYhiix03illJOVAOyck",
             "VEmDZpDXXK8p8N0Cndsxs924q6nS1RXFASRl6BfUqdw").build();
 
-        Algorithm ecdh = Algorithm.ECDH_ES((ECPrivateKey) senderKey.getKey(true), (ECPublicKey) senderKey.getKey(false), (ECPublicKey) receiverKey.getKey(false), "Alice", "Bob", "A128GCM", 16);
+        JWEKeyAgreementAlgorithm ecdh = Algorithm.ECDH_ES((ECPrivateKey) senderKey.getKey(true), (ECPublicKey) senderKey.getKey(false), (ECPublicKey) receiverKey.getKey(false), "Alice", "Bob", "A128GCM", 16);
         byte[] derivedKey = ecdh.generateDerivedKey();
         System.out.println("Derived key = " + Hex.encodeHexString(derivedKey));
         short[] expectedDerivedKeyShorts = new short[] {
@@ -267,7 +269,7 @@ public class ECDHESCryptoTest {
         Assert.assertTrue(Arrays.equals(derivedKey, expectedDerivedKey));
 
 
-        Algorithm ecdhReceiver = Algorithm.ECDH_ES((ECPrivateKey) receiverKey.getKey(true), (ECPublicKey) receiverKey.getKey(false), (ECPublicKey) senderKey.getKey(false), "Alice", "Bob", "A128GCM", 16);
+        JWEKeyAgreementAlgorithm ecdhReceiver = Algorithm.ECDH_ES((ECPrivateKey) receiverKey.getKey(true), (ECPublicKey) receiverKey.getKey(false), (ECPublicKey) senderKey.getKey(false), "Alice", "Bob", "A128GCM", 16);
         byte[] receiverDerivedKey = ecdhReceiver.generateDerivedKey();
         Assert.assertTrue(Arrays.equals(receiverDerivedKey, expectedDerivedKey));
     }
@@ -284,7 +286,7 @@ public class ECDHESCryptoTest {
             "e8lnCO-AlStT-NJVX-crhB7QRYhiix03illJOVAOyck",
             "VEmDZpDXXK8p8N0Cndsxs924q6nS1RXFASRl6BfUqdw").build();
 
-        Algorithm ecdhSender = Algorithm.ECDH_ES_A128KW((ECPrivateKey) senderKey.getKey(true), (ECPublicKey) senderKey.getKey(false), (ECPublicKey) receiverKey.getKey(false), "Alice", "Bob", "A128GCM", 16);
+        JWEKeyWrapAlgorithm ecdhSender = Algorithm.ECDH_ES_A128KW((ECPrivateKey) senderKey.getKey(true), (ECPublicKey) senderKey.getKey(false), (ECPublicKey) receiverKey.getKey(false), "Alice", "Bob", "A128GCM", 16);
         SecureRandom secureRandom = new SecureRandom();
         byte[] cek = new byte[16];
         secureRandom.nextBytes(cek);
@@ -293,7 +295,7 @@ public class ECDHESCryptoTest {
         byte[] wrappedCek = ecdhSender.wrap(cek);
         System.out.println("Wrapped CEK = " + Hex.encodeHexString(wrappedCek));
 
-        Algorithm ecdhReceiver = Algorithm.ECDH_ES_A128KW((ECPrivateKey) receiverKey.getKey(true), (ECPublicKey) receiverKey.getKey(false), (ECPublicKey) senderKey.getKey(false), "Alice", "Bob", "A128GCM", 16);
+        JWEKeyWrapAlgorithm ecdhReceiver = Algorithm.ECDH_ES_A128KW((ECPrivateKey) receiverKey.getKey(true), (ECPublicKey) receiverKey.getKey(false), (ECPublicKey) senderKey.getKey(false), "Alice", "Bob", "A128GCM", 16);
 
         byte[] unwrappedCek = ecdhReceiver.unwrap(wrappedCek);
         System.out.println("Unwrapped CEK = " + Hex.encodeHexString(unwrappedCek));
@@ -366,7 +368,7 @@ public class ECDHESCryptoTest {
                     System.out.println(receiverPubKey.toDict().toString());
                 }
                 int keydatalen = Algorithm.getAlgorithmKeydataLen(enc);
-                Algorithm senderAlg = Algorithm.ECDH_ES((ECPrivateKey) senderKeyPair.getPrivate(), (ECPublicKey) senderKeyPair.getPublic(), (ECPublicKey)receiverKeyPair.getPublic(), "Alice", "Tom", enc, keydatalen);
+                JWEKeyAgreementAlgorithm senderAlg = Algorithm.ECDH_ES((ECPrivateKey) senderKeyPair.getPrivate(), (ECPublicKey) senderKeyPair.getPublic(), (ECPublicKey)receiverKeyPair.getPublic(), "Alice", "Tom", enc, keydatalen);
                 CipherParams cipherParams = CipherParams.getKeyAgreementInstance(enc, senderAlg);
                 Algorithm senderEnc = Algorithm.getContentEncryptionAlg(enc, cipherParams);
 
@@ -419,7 +421,7 @@ public class ECDHESCryptoTest {
                     System.out.println(receiverPubKey.toDict().toString());
                 }
 //                int keydatalen = Algorithm.getAlgorithmKeydataLen(enc);
-                Algorithm senderAlg = Algorithm.ECDH_ES((ECPrivateKey) senderKeyPair.getPrivate(), (ECPublicKey) senderKeyPair.getPublic(), (ECPublicKey)receiverKeyPair.getPublic(), "Alice", "Tom", enc);
+                JWEKeyAgreementAlgorithm senderAlg = Algorithm.ECDH_ES((ECPrivateKey) senderKeyPair.getPrivate(), (ECPublicKey) senderKeyPair.getPublic(), (ECPublicKey)receiverKeyPair.getPublic(), "Alice", "Tom", enc);
                 CipherParams cipherParams = CipherParams.getKeyAgreementInstance(enc, senderAlg);
                 Algorithm senderEnc = Algorithm.getContentEncryptionAlg(enc, cipherParams);
 
@@ -464,6 +466,7 @@ public class ECDHESCryptoTest {
 
         Algorithm senderAlg = Algorithm.ECDH_ES_A128KW((ECPrivateKey) senderKeyPair.getPrivate(), (ECPublicKey) senderKeyPair.getPublic(), (ECPublicKey)receiverKeyPair.getPublic(), "Alice", "Tom", "ECDH-ES+A128KW", 128);
         CipherParams cipherParams = CipherParams.getInstance("A128CBC-HS256");
+//        CipherParams cipherParams = CipherParams.getKeyAgreementInstance("A128CBC-HS256", senderAlg);
         Algorithm senderEnc = Algorithm.A128CBC_HS256(cipherParams);
 
 

@@ -13,7 +13,7 @@ import java.security.SignatureException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 
-class ECDSAAlgorithm extends Algorithm {
+class ECDSAAlgorithm extends JWSAlgorithm {
 
     private final ECDSAKeyProvider keyProvider;
     private final CryptoHelper crypto;

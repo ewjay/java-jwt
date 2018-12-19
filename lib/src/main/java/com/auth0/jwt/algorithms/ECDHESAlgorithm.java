@@ -2,23 +2,16 @@ package com.auth0.jwt.algorithms;
 
 import com.auth0.jwt.exceptions.KDFException;
 import com.auth0.jwt.exceptions.KeyAgreementException;
-import com.auth0.jwt.exceptions.SignatureGenerationException;
-import com.auth0.jwt.exceptions.SignatureVerificationException;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.ECDSAKeyProvider;
 import com.auth0.msg.ECKey;
 import com.auth0.msg.Utils;
 
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ECDHESAlgorithm extends Algorithm {
+public class ECDHESAlgorithm extends JWEKeyAgreementAlgorithm {
     protected final ECDSAKeyProvider senderProvider;
     protected final ECDSAKeyProvider receiverProvider;
     protected final CryptoHelper crypto;
@@ -65,17 +58,6 @@ public class ECDHESAlgorithm extends Algorithm {
 
     ECDHESAlgorithm(String id, String algorithm, ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws IllegalArgumentException {
         this(new CryptoHelper(), id, algorithm, senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
-    }
-
-
-    @Override
-    public void verify(DecodedJWT jwt) throws SignatureVerificationException {
-
-    }
-
-    @Override
-    public byte[] sign(byte[] contentBytes) throws SignatureGenerationException {
-        return new byte[0];
     }
 
     @Override

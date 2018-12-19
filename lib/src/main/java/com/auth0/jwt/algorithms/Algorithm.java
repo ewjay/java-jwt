@@ -1,11 +1,5 @@
 package com.auth0.jwt.algorithms;
 
-import com.auth0.jwt.exceptions.DecryptionException;
-import com.auth0.jwt.exceptions.EncryptionException;
-import com.auth0.jwt.exceptions.KeyAgreementException;
-import com.auth0.jwt.exceptions.SignatureGenerationException;
-import com.auth0.jwt.exceptions.SignatureVerificationException;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.ECDSAKeyProvider;
 import com.auth0.jwt.interfaces.RSAKeyProvider;
 
@@ -30,7 +24,7 @@ public abstract class Algorithm {
      * @return a valid RSA256 Algorithm.
      * @throws IllegalArgumentException if the provided Key is null.
      */
-    public static Algorithm RSA256(RSAKeyProvider keyProvider) throws IllegalArgumentException {
+    public static JWSAlgorithm RSA256(RSAKeyProvider keyProvider) throws IllegalArgumentException {
         return new RSAAlgorithm("RS256", "SHA256withRSA", keyProvider);
     }
 
@@ -42,7 +36,7 @@ public abstract class Algorithm {
      * @return a valid RSA256 Algorithm.
      * @throws IllegalArgumentException if both provided Keys are null.
      */
-    public static Algorithm RSA256(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
+    public static JWSAlgorithm RSA256(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
         return RSA256(RSAAlgorithm.providerForKeys(publicKey, privateKey));
     }
 
@@ -55,7 +49,7 @@ public abstract class Algorithm {
      * @deprecated use {@link #RSA256(RSAPublicKey, RSAPrivateKey)} or {@link #RSA256(RSAKeyProvider)}
      */
     @Deprecated
-    public static Algorithm RSA256(RSAKey key) throws IllegalArgumentException {
+    public static JWSAlgorithm RSA256(RSAKey key) throws IllegalArgumentException {
         RSAPublicKey publicKey = key instanceof RSAPublicKey ? (RSAPublicKey) key : null;
         RSAPrivateKey privateKey = key instanceof RSAPrivateKey ? (RSAPrivateKey) key : null;
         return RSA256(publicKey, privateKey);
@@ -68,7 +62,7 @@ public abstract class Algorithm {
      * @return a valid RSA384 Algorithm.
      * @throws IllegalArgumentException if the Key Provider is null.
      */
-    public static Algorithm RSA384(RSAKeyProvider keyProvider) throws IllegalArgumentException {
+    public static JWSAlgorithm RSA384(RSAKeyProvider keyProvider) throws IllegalArgumentException {
         return new RSAAlgorithm("RS384", "SHA384withRSA", keyProvider);
     }
 
@@ -80,7 +74,7 @@ public abstract class Algorithm {
      * @return a valid RSA384 Algorithm.
      * @throws IllegalArgumentException if both provided Keys are null.
      */
-    public static Algorithm RSA384(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
+    public static JWSAlgorithm RSA384(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
         return RSA384(RSAAlgorithm.providerForKeys(publicKey, privateKey));
     }
 
@@ -93,7 +87,7 @@ public abstract class Algorithm {
      * @deprecated use {@link #RSA384(RSAPublicKey, RSAPrivateKey)} or {@link #RSA384(RSAKeyProvider)}
      */
     @Deprecated
-    public static Algorithm RSA384(RSAKey key) throws IllegalArgumentException {
+    public static JWSAlgorithm RSA384(RSAKey key) throws IllegalArgumentException {
         RSAPublicKey publicKey = key instanceof RSAPublicKey ? (RSAPublicKey) key : null;
         RSAPrivateKey privateKey = key instanceof RSAPrivateKey ? (RSAPrivateKey) key : null;
         return RSA384(publicKey, privateKey);
@@ -106,7 +100,7 @@ public abstract class Algorithm {
      * @return a valid RSA512 Algorithm.
      * @throws IllegalArgumentException if the Key Provider is null.
      */
-    public static Algorithm RSA512(RSAKeyProvider keyProvider) throws IllegalArgumentException {
+    public static JWSAlgorithm RSA512(RSAKeyProvider keyProvider) throws IllegalArgumentException {
         return new RSAAlgorithm("RS512", "SHA512withRSA", keyProvider);
     }
 
@@ -118,7 +112,7 @@ public abstract class Algorithm {
      * @return a valid RSA512 Algorithm.
      * @throws IllegalArgumentException if both provided Keys are null.
      */
-    public static Algorithm RSA512(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
+    public static JWSAlgorithm RSA512(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
         return RSA512(RSAAlgorithm.providerForKeys(publicKey, privateKey));
     }
 
@@ -131,7 +125,7 @@ public abstract class Algorithm {
      * @deprecated use {@link #RSA512(RSAPublicKey, RSAPrivateKey)} or {@link #RSA512(RSAKeyProvider)}
      */
     @Deprecated
-    public static Algorithm RSA512(RSAKey key) throws IllegalArgumentException {
+    public static JWSAlgorithm RSA512(RSAKey key) throws IllegalArgumentException {
         RSAPublicKey publicKey = key instanceof RSAPublicKey ? (RSAPublicKey) key : null;
         RSAPrivateKey privateKey = key instanceof RSAPrivateKey ? (RSAPrivateKey) key : null;
         return RSA512(publicKey, privateKey);
@@ -143,8 +137,8 @@ public abstract class Algorithm {
      * @return a valid RSA1_5 Algorithm.
      * @throws IllegalArgumentException if the provided Key is null
      */
-    public static Algorithm RSA1_5(RSAKeyProvider keyProvider) throws IllegalArgumentException {
-        return new RSAAlgorithm("RSA1_5", "RSA/ECB/PKCS1Padding", keyProvider);
+    public static JWEKeyEncryptionAlgorithm RSA1_5(RSAKeyProvider keyProvider) throws IllegalArgumentException {
+        return new RSAEncAlgorithm("RSA1_5", "RSA/ECB/PKCS1Padding", keyProvider);
     }
 
     /**
@@ -154,7 +148,7 @@ public abstract class Algorithm {
      * @return a valid RSA1_5 Algorithm
      * @throws IllegalArgumentException if both provided Keys are null.
      */
-    public static Algorithm RSA1_5(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
+    public static JWEKeyEncryptionAlgorithm RSA1_5(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
         return RSA1_5(RSAAlgorithm.providerForKeys(publicKey, privateKey));
     }
 
@@ -164,8 +158,8 @@ public abstract class Algorithm {
      * @return a valid RSAOAEP Algorithm
      * @throws IllegalArgumentException if the provided Key is null
      */
-    public static Algorithm RSAOAEP(RSAKeyProvider keyProvider) throws IllegalArgumentException {
-        return new RSAAlgorithm("RSA-OAEP", "RSA/ECB/OAEPWithSHA-1AndMGF1Padding", keyProvider);
+    public static RSAEncAlgorithm RSAOAEP(RSAKeyProvider keyProvider) throws IllegalArgumentException {
+        return new RSAEncAlgorithm("RSA-OAEP", "RSA/ECB/OAEPWithSHA-1AndMGF1Padding", keyProvider);
     }
 
     /**
@@ -175,7 +169,7 @@ public abstract class Algorithm {
      * @return a valid RSAOAEP Algorithm
      * @throws IllegalArgumentException if both provided Keys are null.
      */
-    public static Algorithm RSAOAEP(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
+    public static JWEKeyEncryptionAlgorithm RSAOAEP(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
         return RSAOAEP(RSAAlgorithm.providerForKeys(publicKey, privateKey));
     }
 
@@ -185,8 +179,8 @@ public abstract class Algorithm {
      * @return a valid RSAOAEP256 Algorithm
      * @throws IllegalArgumentException if the provided Key is null
      */
-    public static Algorithm RSAOAEP256(RSAKeyProvider keyProvider) throws IllegalArgumentException {
-        return new RSAAlgorithm("RSA-OAEP-256", "RSA/ECB/OAEPWithSHA-256AndMGF1Padding", keyProvider);
+    public static JWEKeyEncryptionAlgorithm RSAOAEP256(RSAKeyProvider keyProvider) throws IllegalArgumentException {
+        return new RSAEncAlgorithm("RSA-OAEP-256", "RSA/ECB/OAEPWithSHA-256AndMGF1Padding", keyProvider);
     }
 
     /**
@@ -196,7 +190,7 @@ public abstract class Algorithm {
      * @return a valid RSAOAEP256 Algorithm
      * @throws IllegalArgumentException  if both provided Keys are null.
      */
-    public static Algorithm RSAOAEP256(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
+    public static JWEKeyEncryptionAlgorithm RSAOAEP256(RSAPublicKey publicKey, RSAPrivateKey privateKey) throws IllegalArgumentException {
         return RSAOAEP256(RSAAlgorithm.providerForKeys(publicKey, privateKey));
     }
 
@@ -208,7 +202,7 @@ public abstract class Algorithm {
      * @throws IllegalArgumentException     if the provided Secret is null.
      * @throws UnsupportedEncodingException if the current Java platform implementation doesn't support the UTF-8 character encoding.
      */
-    public static Algorithm HMAC256(String secret) throws IllegalArgumentException, UnsupportedEncodingException {
+    public static JWSAlgorithm HMAC256(String secret) throws IllegalArgumentException, UnsupportedEncodingException {
         return new HMACAlgorithm("HS256", "HmacSHA256", secret);
     }
 
@@ -220,7 +214,7 @@ public abstract class Algorithm {
      * @throws IllegalArgumentException     if the provided Secret is null.
      * @throws UnsupportedEncodingException if the current Java platform implementation doesn't support the UTF-8 character encoding.
      */
-    public static Algorithm HMAC384(String secret) throws IllegalArgumentException, UnsupportedEncodingException {
+    public static JWSAlgorithm HMAC384(String secret) throws IllegalArgumentException, UnsupportedEncodingException {
         return new HMACAlgorithm("HS384", "HmacSHA384", secret);
     }
 
@@ -232,7 +226,7 @@ public abstract class Algorithm {
      * @throws IllegalArgumentException     if the provided Secret is null.
      * @throws UnsupportedEncodingException if the current Java platform implementation doesn't support the UTF-8 character encoding.
      */
-    public static Algorithm HMAC512(String secret) throws IllegalArgumentException, UnsupportedEncodingException {
+    public static JWSAlgorithm HMAC512(String secret) throws IllegalArgumentException, UnsupportedEncodingException {
         return new HMACAlgorithm("HS512", "HmacSHA512", secret);
     }
 
@@ -243,7 +237,7 @@ public abstract class Algorithm {
      * @return a valid HMAC256 Algorithm.
      * @throws IllegalArgumentException if the provided Secret is null.
      */
-    public static Algorithm HMAC256(byte[] secret) throws IllegalArgumentException {
+    public static JWSAlgorithm HMAC256(byte[] secret) throws IllegalArgumentException {
         return new HMACAlgorithm("HS256", "HmacSHA256", secret);
     }
 
@@ -254,7 +248,7 @@ public abstract class Algorithm {
      * @return a valid HMAC384 Algorithm.
      * @throws IllegalArgumentException if the provided Secret is null.
      */
-    public static Algorithm HMAC384(byte[] secret) throws IllegalArgumentException {
+    public static JWSAlgorithm HMAC384(byte[] secret) throws IllegalArgumentException {
         return new HMACAlgorithm("HS384", "HmacSHA384", secret);
     }
 
@@ -265,7 +259,7 @@ public abstract class Algorithm {
      * @return a valid HMAC512 Algorithm.
      * @throws IllegalArgumentException if the provided Secret is null.
      */
-    public static Algorithm HMAC512(byte[] secret) throws IllegalArgumentException {
+    public static JWSAlgorithm HMAC512(byte[] secret) throws IllegalArgumentException {
         return new HMACAlgorithm("HS512", "HmacSHA512", secret);
     }
 
@@ -276,7 +270,7 @@ public abstract class Algorithm {
      * @return a valid ECDSA256 Algorithm.
      * @throws IllegalArgumentException if the Key Provider is null.
      */
-    public static Algorithm ECDSA256(ECDSAKeyProvider keyProvider) throws IllegalArgumentException {
+    public static JWSAlgorithm ECDSA256(ECDSAKeyProvider keyProvider) throws IllegalArgumentException {
         return new ECDSAAlgorithm("ES256", "SHA256withECDSA", 32, keyProvider);
     }
 
@@ -288,7 +282,7 @@ public abstract class Algorithm {
      * @return a valid ECDSA256 Algorithm.
      * @throws IllegalArgumentException if the provided Key is null.
      */
-    public static Algorithm ECDSA256(ECPublicKey publicKey, ECPrivateKey privateKey) throws IllegalArgumentException {
+    public static JWSAlgorithm ECDSA256(ECPublicKey publicKey, ECPrivateKey privateKey) throws IllegalArgumentException {
         return ECDSA256(ECDSAAlgorithm.providerForKeys(publicKey, privateKey));
     }
 
@@ -301,7 +295,7 @@ public abstract class Algorithm {
      * @deprecated use {@link #ECDSA256(ECPublicKey, ECPrivateKey)} or {@link #ECDSA256(ECDSAKeyProvider)}
      */
     @Deprecated
-    public static Algorithm ECDSA256(ECKey key) throws IllegalArgumentException {
+    public static JWSAlgorithm ECDSA256(ECKey key) throws IllegalArgumentException {
         ECPublicKey publicKey = key instanceof ECPublicKey ? (ECPublicKey) key : null;
         ECPrivateKey privateKey = key instanceof ECPrivateKey ? (ECPrivateKey) key : null;
         return ECDSA256(publicKey, privateKey);
@@ -314,7 +308,7 @@ public abstract class Algorithm {
      * @return a valid ECDSA384 Algorithm.
      * @throws IllegalArgumentException if the Key Provider is null.
      */
-    public static Algorithm ECDSA384(ECDSAKeyProvider keyProvider) throws IllegalArgumentException {
+    public static JWSAlgorithm ECDSA384(ECDSAKeyProvider keyProvider) throws IllegalArgumentException {
         return new ECDSAAlgorithm("ES384", "SHA384withECDSA", 48, keyProvider);
     }
 
@@ -326,7 +320,7 @@ public abstract class Algorithm {
      * @return a valid ECDSA384 Algorithm.
      * @throws IllegalArgumentException if the provided Key is null.
      */
-    public static Algorithm ECDSA384(ECPublicKey publicKey, ECPrivateKey privateKey) throws IllegalArgumentException {
+    public static JWSAlgorithm ECDSA384(ECPublicKey publicKey, ECPrivateKey privateKey) throws IllegalArgumentException {
         return ECDSA384(ECDSAAlgorithm.providerForKeys(publicKey, privateKey));
     }
 
@@ -339,7 +333,7 @@ public abstract class Algorithm {
      * @deprecated use {@link #ECDSA384(ECPublicKey, ECPrivateKey)} or {@link #ECDSA384(ECDSAKeyProvider)}
      */
     @Deprecated
-    public static Algorithm ECDSA384(ECKey key) throws IllegalArgumentException {
+    public static JWSAlgorithm ECDSA384(ECKey key) throws IllegalArgumentException {
         ECPublicKey publicKey = key instanceof ECPublicKey ? (ECPublicKey) key : null;
         ECPrivateKey privateKey = key instanceof ECPrivateKey ? (ECPrivateKey) key : null;
         return ECDSA384(publicKey, privateKey);
@@ -352,7 +346,7 @@ public abstract class Algorithm {
      * @return a valid ECDSA512 Algorithm.
      * @throws IllegalArgumentException if the Key Provider is null.
      */
-    public static Algorithm ECDSA512(ECDSAKeyProvider keyProvider) throws IllegalArgumentException {
+    public static JWSAlgorithm ECDSA512(ECDSAKeyProvider keyProvider) throws IllegalArgumentException {
         return new ECDSAAlgorithm("ES512", "SHA512withECDSA", 66, keyProvider);
     }
 
@@ -364,86 +358,86 @@ public abstract class Algorithm {
      * @return a valid ECDSA512 Algorithm.
      * @throws IllegalArgumentException if the provided Key is null.
      */
-    public static Algorithm ECDSA512(ECPublicKey publicKey, ECPrivateKey privateKey) throws IllegalArgumentException {
+    public static JWSAlgorithm ECDSA512(ECPublicKey publicKey, ECPrivateKey privateKey) throws IllegalArgumentException {
         return ECDSA512(ECDSAAlgorithm.providerForKeys(publicKey, privateKey));
     }
 
 
-    public static Algorithm A128CBC_HS256(CipherParams cipherParams) throws IllegalArgumentException {
+    public static JWEContentEncryptionAlgorithm A128CBC_HS256(CipherParams cipherParams) throws IllegalArgumentException {
         return new AESHSAlgorithm("A128CBC-HS256", "AES/CBC/PKCS5Padding", cipherParams);
     }
 
-    public static Algorithm A192CBC_HS384(CipherParams cipherParams) throws IllegalArgumentException {
+    public static JWEContentEncryptionAlgorithm A192CBC_HS384(CipherParams cipherParams) throws IllegalArgumentException {
         return new AESHSAlgorithm("A192CBC-HS384", "AES/CBC/PKCS5Padding", cipherParams);
     }
 
-    public static Algorithm A256BC_HS512(CipherParams cipherParams) throws IllegalArgumentException {
+    public static JWEContentEncryptionAlgorithm A256BC_HS512(CipherParams cipherParams) throws IllegalArgumentException {
         return new AESHSAlgorithm("A256CBC-HS512", "AES/CBC/PKCS5Padding", cipherParams);
     }
 
-    public static Algorithm A128GCM(CipherParams cipherParams) throws IllegalArgumentException {
+    public static JWEContentEncryptionAlgorithm A128GCM(CipherParams cipherParams) throws IllegalArgumentException {
         return new AESGCMAlgorithm("A128GCM", "AES/GCM/NoPadding", cipherParams);
     }
 
-    public static Algorithm A192GCM(CipherParams cipherParams) throws IllegalArgumentException {
+    public static JWEContentEncryptionAlgorithm A192GCM(CipherParams cipherParams) throws IllegalArgumentException {
         return new AESGCMAlgorithm("A192GCM", "AES/GCM/NoPadding", cipherParams);
     }
 
-    public static Algorithm A256GCM(CipherParams cipherParams) throws IllegalArgumentException {
+    public static JWEContentEncryptionAlgorithm A256GCM(CipherParams cipherParams) throws IllegalArgumentException {
         return new AESGCMAlgorithm("A256GCM", "AES/GCM/NoPadding", cipherParams);
     }
 
-    public static Algorithm ECDH_ES(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+    public static JWEKeyAgreementAlgorithm ECDH_ES(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
         return new ECDHESAlgorithm("ECDH-ES", "ECDH", senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
     }
 
-    public static Algorithm ECDH_ES(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+    public static JWEKeyAgreementAlgorithm ECDH_ES(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
         return ECDH_ES(ECDSAAlgorithm.providerForKeys(senderPublicKey, senderPrivateKey), ECDSAAlgorithm.providerForKeys(receiverPublicKey, null), partyUInfo, partyVInfo, algId, keydataLen);
     }
 
-    public static Algorithm ECDH_ES(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId) throws  IllegalArgumentException {
+    public static JWEKeyAgreementAlgorithm ECDH_ES(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId) throws  IllegalArgumentException {
         int keydataLen = getAlgorithmKeydataLen(algId);
         return new ECDHESAlgorithm("ECDH-ES", "ECDH", senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
     }
 
-    public static Algorithm ECDH_ES(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId) throws  IllegalArgumentException {
+    public static JWEKeyAgreementAlgorithm ECDH_ES(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId) throws  IllegalArgumentException {
         int keydataLen = getAlgorithmKeydataLen(algId);
         return ECDH_ES(ECDSAAlgorithm.providerForKeys(senderPublicKey, senderPrivateKey), ECDSAAlgorithm.providerForKeys(receiverPublicKey, null), partyUInfo, partyVInfo, algId, keydataLen);
     }
 
-    public static Algorithm ECDH_ES_A128KW(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+    public static JWEKeyWrapAlgorithm ECDH_ES_A128KW(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
         return new ECDHESKeyWrapAlgorithm("ECDH-ES+A128KW", "ECDH", senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
     }
 
-    public static Algorithm ECDH_ES_A128KW(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+    public static JWEKeyWrapAlgorithm ECDH_ES_A128KW(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
         return ECDH_ES_A128KW(ECDSAAlgorithm.providerForKeys(senderPublicKey, senderPrivateKey), ECDSAAlgorithm.providerForKeys(receiverPublicKey, null), partyUInfo, partyVInfo, algId, keydataLen);
     }
 
-    public static Algorithm ECDH_ES_A192KW(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+    public static JWEKeyWrapAlgorithm ECDH_ES_A192KW(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
         return new ECDHESKeyWrapAlgorithm("ECDH-ES+A192KW", "ECDH", senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
     }
 
-    public static Algorithm ECDH_ES_A192KW(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+    public static JWEKeyWrapAlgorithm ECDH_ES_A192KW(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
         return ECDH_ES_A192KW(ECDSAAlgorithm.providerForKeys(senderPublicKey, senderPrivateKey), ECDSAAlgorithm.providerForKeys(receiverPublicKey, null), partyUInfo, partyVInfo, algId, keydataLen);
     }
 
-    public static Algorithm ECDH_ES_A256KW(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+    public static JWEKeyWrapAlgorithm ECDH_ES_A256KW(ECDSAKeyProvider senderProvider, ECDSAKeyProvider receiverProvider, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
         return new ECDHESKeyWrapAlgorithm("ECDH-ES+A256KW", "ECDH", senderProvider, receiverProvider, partyUInfo, partyVInfo, algId, keydataLen);
     }
 
-    public static Algorithm ECDH_ES_A256KW(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
+    public static JWEKeyWrapAlgorithm ECDH_ES_A256KW(ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) throws  IllegalArgumentException {
         return ECDH_ES_A256KW(ECDSAAlgorithm.providerForKeys(senderPublicKey, senderPrivateKey), ECDSAAlgorithm.providerForKeys(receiverPublicKey, null), partyUInfo, partyVInfo, algId, keydataLen);
     }
 
-    public static Algorithm AES128Keywrap(byte[] keywrapKey) throws  IllegalArgumentException {
+    public static JWEKeyWrapAlgorithm AES128Keywrap(byte[] keywrapKey) throws  IllegalArgumentException {
         return new AESKeyWrapAlgorithm("A128KW", "AESWrap", keywrapKey);
     }
 
-    public static Algorithm AES192Keywrap(byte[] keywrapKey) throws  IllegalArgumentException {
+    public static JWEKeyWrapAlgorithm AES192Keywrap(byte[] keywrapKey) throws  IllegalArgumentException {
         return new AESKeyWrapAlgorithm("A192KW", "AESWrap", keywrapKey);
     }
 
-    public static Algorithm AES256Keywrap(byte[] keywrapKey) throws  IllegalArgumentException {
+    public static JWEKeyWrapAlgorithm AES256Keywrap(byte[] keywrapKey) throws  IllegalArgumentException {
         return new AESKeyWrapAlgorithm("A256KW", "AESWrap", keywrapKey);
     }
 
@@ -456,14 +450,14 @@ public abstract class Algorithm {
      * @deprecated use {@link #ECDSA512(ECPublicKey, ECPrivateKey)} or {@link #ECDSA512(ECDSAKeyProvider)}
      */
     @Deprecated
-    public static Algorithm ECDSA512(ECKey key) throws IllegalArgumentException {
+    public static JWSAlgorithm ECDSA512(ECKey key) throws IllegalArgumentException {
         ECPublicKey publicKey = key instanceof ECPublicKey ? (ECPublicKey) key : null;
         ECPrivateKey privateKey = key instanceof ECPrivateKey ? (ECPrivateKey) key : null;
         return ECDSA512(publicKey, privateKey);
     }
 
 
-    public static Algorithm none() {
+    public static JWSAlgorithm none() {
         return new NoneAlgorithm();
     }
 
@@ -502,7 +496,7 @@ public abstract class Algorithm {
         return requiredLen;
     }
 
-    public static Algorithm getContentEncryptionAlg(String algorithm, CipherParams cipherParams) {
+    public static JWEContentEncryptionAlgorithm getContentEncryptionAlg(String algorithm, CipherParams cipherParams) {
         if("A128CBC-HS256".equals(algorithm)) {
             return A128CBC_HS256(cipherParams);
         } else if("A192CBC-HS384".equals(algorithm)) {
@@ -520,7 +514,7 @@ public abstract class Algorithm {
         }
     }
 
-    public static Algorithm getKeyWrapAlg(String algorithm, byte[] key) {
+    public static JWEKeyWrapAlgorithm getKeyWrapAlg(String algorithm, byte[] key) {
         if("A128KW".equals(algorithm)) {
             return AES128Keywrap(key);
         } else if("A192KW".equals(algorithm)) {
@@ -532,7 +526,7 @@ public abstract class Algorithm {
         }
     }
 
-    public static Algorithm getECDHES_KeyWrapAlg(String algorithm, ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) {
+    public static JWEKeyWrapAlgorithm getECDHES_KeyWrapAlg(String algorithm, ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId, int keydataLen) {
         if("ECDH-ES+A128KW".equals(algorithm)) {
             return ECDH_ES_A128KW(senderPrivateKey, senderPublicKey, receiverPublicKey, partyUInfo, partyVInfo, algId, keydataLen);
         } else if("ECDH-ES+A192KW".equals(algorithm)) {
@@ -544,7 +538,7 @@ public abstract class Algorithm {
         }
     }
 
-    public static Algorithm getECDHES_KeyWrapAlg(String algorithm, ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId) {
+    public static JWEKeyWrapAlgorithm getECDHES_KeyWrapAlg(String algorithm, ECPrivateKey senderPrivateKey, ECPublicKey senderPublicKey, ECPublicKey receiverPublicKey, String partyUInfo, String partyVInfo, String algId) {
         int keydataLen = getAlgorithmKeydataLen(algId);
         return getECDHES_KeyWrapAlg(algorithm, senderPrivateKey, senderPublicKey, receiverPublicKey, partyUInfo, partyVInfo, algId, keydataLen);
     }
@@ -584,57 +578,6 @@ public abstract class Algorithm {
     @Override
     public String toString() {
         return description;
-    }
-
-    /**
-     * Verify the given token using this Algorithm instance.
-     *
-     * @param jwt the already decoded JWT that it's going to be verified.
-     * @throws SignatureVerificationException if the Token's Signature is invalid, meaning that it doesn't match the signatureBytes, or if the Key is invalid.
-     */
-    public abstract void verify(DecodedJWT jwt) throws SignatureVerificationException;
-
-    /**
-     * Sign the given content using this Algorithm instance.
-     *
-     * @param contentBytes an array of bytes representing the base64 encoded content to be verified against the signature.
-     * @return the signature in a base64 encoded array of bytes
-     * @throws SignatureGenerationException if the Key is invalid.
-     */
-    public abstract byte[] sign(byte[] contentBytes) throws SignatureGenerationException;
-
-
-    public byte[] encrypt(byte[] contentBytes)throws EncryptionException {
-        throw new EncryptionException(this, "Encryption is not supported");
-    }
-
-    public byte[] decrypt(byte[] cipherText) throws DecryptionException {
-        throw new DecryptionException(this, "Decryption is not supported");
-    }
-
-    public AuthenticatedCipherText encrypt(byte[] contentBytes, byte[] aad) throws EncryptionException {
-        throw new EncryptionException(this, "Encryption is not supported");
-    }
-
-    public byte[] decrypt(byte[] cipherText, byte[] authTag, byte[] aad) throws DecryptionException {
-        throw new DecryptionException(this, "Decryption is not supported");
-    }
-
-    public byte[] generateAgreementKey() throws KeyAgreementException {
-        throw new KeyAgreementException(this, "Key agreement is not supported");
-    }
-
-    public byte[] generateDerivedKey() throws KeyAgreementException {
-        throw new KeyAgreementException(this, "Derived key agreement is not supported");
-    }
-
-
-    public byte[] wrap(byte[] contentBytes)throws EncryptionException {
-        throw new EncryptionException(this, "Key Wrap is not supported");
-    }
-
-    public byte[] unwrap(byte[] cipherText) throws DecryptionException {
-        throw new DecryptionException(this, "Key Unwrap is not supported");
     }
 
     public Map<String, Object> getPubInfo() {

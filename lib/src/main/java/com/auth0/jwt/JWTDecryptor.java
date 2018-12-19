@@ -5,28 +5,36 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.algorithms.CipherParams;
 import com.auth0.jwt.algorithms.ECDHESAlgorithm;
 import com.auth0.jwt.algorithms.ECDHESKeyWrapAlgorithm;
+import com.auth0.jwt.algorithms.JWEContentEncryptionAlgorithm;
+import com.auth0.jwt.algorithms.JWEKeyAgreementAlgorithm;
+import com.auth0.jwt.algorithms.JWEKeyEncryptionAlgorithm;
+import com.auth0.jwt.algorithms.JWEKeyWrapAlgorithm;
 import com.auth0.jwt.exceptions.DecryptionException;
 import com.auth0.jwt.exceptions.KeyAgreementException;
-import com.auth0.jwt.impl.JWTParser;
-import com.auth0.jwt.impl.NullClaim;
 import com.auth0.jwt.impl.PublicClaims;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.codec.binary.StringUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
+/**
+ * JWE class for performing decryption
+ */
 public class JWTDecryptor {
     private Algorithm keyDecryptionAlg;
 
+    /**
+     * Constructs a new JWTDecryptor for performing decryption
+     * @param keyDecryptionAlg algorithm used for key decryption or key agreement, must match the
+     *                         'alg' parameter specified in the JWE
+     */
     public JWTDecryptor(Algorithm keyDecryptionAlg) {
         this.keyDecryptionAlg = keyDecryptionAlg;
     }
@@ -44,11 +52,18 @@ public class JWTDecryptor {
         return byteArrayOutputStream.toByteArray();
     }
 
-    public byte[] decrypt(String jws) throws DecryptionException {
+    /**
+     * Decrypts a JWE
+     * @param jwe JWE string
+     * @return byte array representing the decrypted payload contents
+     * @throws DecryptionException if decryption fails(key decryption error, invalid algorithm,
+     *                             compression failure)
+     */
+    public byte[] decrypt(String jwe) throws DecryptionException {
         if(keyDecryptionAlg == null) {
             throw new DecryptionException(keyDecryptionAlg, "Algorithm is null");
         }
-        DecodedJWT decodedJWT = JWT.decode(jws);
+        DecodedJWT decodedJWT = JWT.decode(jwe);
         String algAlgId = decodedJWT.getAlgorithm();
         if(!decodedJWT.getAlgorithm().equals(keyDecryptionAlg.getName())) {
             throw new DecryptionException(keyDecryptionAlg, "alg Algorithm mismatch");
@@ -60,17 +75,16 @@ public class JWTDecryptor {
         byte[] cipherText = Base64.decodeBase64(decodedJWT.getCipherText());
         byte[] decryptedKey = new byte[0];
 
-        if(keyDecryptionAlg instanceof ECDHESAlgorithm && !(keyDecryptionAlg instanceof ECDHESKeyWrapAlgorithm)) {
+        if(keyDecryptionAlg instanceof JWEKeyAgreementAlgorithm) {
             try {
-                decryptedKey = keyDecryptionAlg.generateDerivedKey();
+                decryptedKey = ((JWEKeyAgreementAlgorithm)keyDecryptionAlg).generateDerivedKey();
             } catch (KeyAgreementException e) {
                 throw new DecryptionException(keyDecryptionAlg, e);
             }
-        } else if(keyDecryptionAlg instanceof ECDHESKeyWrapAlgorithm ||
-            keyDecryptionAlg instanceof AESKeyWrapAlgorithm) {
-            decryptedKey = keyDecryptionAlg.unwrap(encryptedKey);
+        } else if(keyDecryptionAlg instanceof JWEKeyWrapAlgorithm) {
+            decryptedKey = ((JWEKeyWrapAlgorithm)keyDecryptionAlg).unwrap(encryptedKey);
         } else {
-            decryptedKey = keyDecryptionAlg.decrypt(encryptedKey);
+            decryptedKey = ((JWEKeyEncryptionAlgorithm)keyDecryptionAlg).decrypt(encryptedKey);
         }
         List<String> aeshsAlgs = Arrays.asList("A128CBC-HS256", "A192CBC-HS384", "A256CBC-HS512");
         List<String> aesgcmAlgs = Arrays.asList("A128GCM", "A192GCM", "A256GCM");
@@ -80,11 +94,13 @@ public class JWTDecryptor {
             byte[] encKey = Arrays.copyOfRange(decryptedKey, mid, decryptedKey.length);
             byte[] macKey = Arrays.copyOfRange(decryptedKey, 0, mid);
             CipherParams cipherParams = new CipherParams(encKey, macKey, iv);
-            Algorithm encAlg = keyDecryptionAlg.getContentEncryptionAlg(decodedJWT.getEncAlgorithm(), cipherParams);
+            JWEContentEncryptionAlgorithm encAlg = Algorithm.getContentEncryptionAlg(decodedJWT.getEncAlgorithm(),
+                cipherParams);
             decryptedContent = encAlg.decrypt(cipherText, tag, headerBytes);
         } else if (aesgcmAlgs.contains(decodedJWT.getEncAlgorithm())) {
             CipherParams cipherParams = new CipherParams(decryptedKey, iv);
-            Algorithm encAlg = Algorithm.getContentEncryptionAlg(decodedJWT.getEncAlgorithm(), cipherParams);
+            JWEContentEncryptionAlgorithm encAlg = Algorithm.getContentEncryptionAlg(decodedJWT.getEncAlgorithm(),
+                cipherParams);
             decryptedContent = encAlg.decrypt(cipherText, tag, headerBytes);
         } else {
             throw new DecryptionException(null, "Unknown enc alg : " + decodedJWT.getEncAlgorithm());

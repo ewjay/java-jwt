@@ -8,6 +8,10 @@ import com.auth0.jwt.algorithms.AuthenticatedCipherText;
 import com.auth0.jwt.algorithms.CipherParams;
 import com.auth0.jwt.algorithms.ECDHESAlgorithm;
 import com.auth0.jwt.algorithms.ECDHESKeyWrapAlgorithm;
+import com.auth0.jwt.algorithms.JWEContentEncryptionAlgorithm;
+import com.auth0.jwt.algorithms.JWEKeyAgreementAlgorithm;
+import com.auth0.jwt.algorithms.JWEKeyEncryptionAlgorithm;
+import com.auth0.jwt.algorithms.JWEKeyWrapAlgorithm;
 import com.auth0.jwt.exceptions.EncryptionException;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.impl.ClaimsHolder;
@@ -27,6 +31,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.Deflater;
 
+/**
+ * JWE class for performing encryption
+ */
 public class JWTEncryptor {
     private Algorithm alg;
     private Algorithm encAlg;
@@ -259,15 +266,14 @@ public class JWTEncryptor {
         } else {
             throw new EncryptionException(encAlg, "Unsupported enc algorithm");
         }
-        if(alg instanceof ECDHESAlgorithm && !(alg instanceof ECDHESKeyWrapAlgorithm)) {
+        if(alg instanceof JWEKeyAgreementAlgorithm) {
             encodedKey = "";
         } else {
             // key encryption or key wrap
-            if(alg instanceof AESKeyWrapAlgorithm ||
-                alg instanceof ECDHESKeyWrapAlgorithm) {
-                encryptedKey = alg.wrap(cipherParams.getMacEncKey());
+            if(alg instanceof JWEKeyWrapAlgorithm) {
+                encryptedKey = ((JWEKeyWrapAlgorithm)alg).wrap(cipherParams.getMacEncKey());
             } else {
-                encryptedKey = alg.encrypt(cipherParams.getMacEncKey());
+                encryptedKey = ((JWEKeyEncryptionAlgorithm)alg).encrypt(cipherParams.getMacEncKey());
             }
             encodedKey = Base64.encodeBase64URLSafeString(encryptedKey);
         }
@@ -278,7 +284,7 @@ public class JWTEncryptor {
             payloadBytes = deflate(payloadBytes);
             System.out.printf("compressed output = %s\n", Hex.encodeHexString(payloadBytes));
         }
-        AuthenticatedCipherText authenticatedCipherText = encAlg.encrypt(payloadBytes, StringUtils.getBytesUtf8(encodedHeader));
+        AuthenticatedCipherText authenticatedCipherText = ((JWEContentEncryptionAlgorithm)encAlg).encrypt(payloadBytes, StringUtils.getBytesUtf8(encodedHeader));
         String encodeCipherText = authenticatedCipherText.getBase64urlCipherText();
         String encodedTag = authenticatedCipherText.getBase64urlTag();
         return String.format("%s.%s.%s.%s.%s", encodedHeader, encodedKey, encodeIV, encodeCipherText, encodedTag);

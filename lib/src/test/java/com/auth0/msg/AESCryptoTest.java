@@ -6,6 +6,8 @@ import com.auth0.jwt.JWTDecryptor;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.algorithms.AuthenticatedCipherText;
 import com.auth0.jwt.algorithms.CipherParams;
+import com.auth0.jwt.algorithms.JWEContentEncryptionAlgorithm;
+import com.auth0.jwt.algorithms.JWEKeyEncryptionAlgorithm;
 import com.auth0.jwt.exceptions.DecryptionException;
 import com.auth0.jwt.impl.JWTParser;
 import com.auth0.jwt.interfaces.Claim;
@@ -58,7 +60,7 @@ public class AESCryptoTest {
 
         CipherParams cipherParams = CipherParams.getInstance("A128CBC-HS256", null);
 
-        Algorithm aes = Algorithm.A128CBC_HS256(cipherParams);
+        JWEContentEncryptionAlgorithm aes = Algorithm.A128CBC_HS256(cipherParams);
 
         SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
         IvParameterSpec ivParameterSpec = new IvParameterSpec(iv);
@@ -121,13 +123,13 @@ public class AESCryptoTest {
             byte[] headerBytes = decodedJWT.getHeader().getBytes("UTF-8");
             byte[] cipherText = Base64.decodeBase64(decodedJWT.getCipherText());
 
-            Algorithm rsaAlg2 = Algorithm.RSA1_5(null, rsaPrivateKey);
+            JWEKeyEncryptionAlgorithm rsaAlg2 = Algorithm.RSA1_5(null, rsaPrivateKey);
             byte[] decryptedKey = rsaAlg2.decrypt(encryptedKey);
             int mid = decryptedKey.length / 2;
             byte[] encKey = Arrays.copyOfRange(decryptedKey, mid, decryptedKey.length);
             byte[] macKey = Arrays.copyOfRange(decryptedKey, 0, mid);
             CipherParams cipherParams2 = new CipherParams(encKey, macKey, iv);
-            Algorithm encAlg2 = Algorithm.A128CBC_HS256(cipherParams2);
+            JWEContentEncryptionAlgorithm encAlg2 = Algorithm.A128CBC_HS256(cipherParams2);
             byte[] plainText = encAlg2.decrypt(cipherText, tag, headerBytes);
             String text = new String(plainText);
             System.out.println(text);
@@ -167,7 +169,7 @@ public class AESCryptoTest {
         System.out.println(jwe);
 
 
-        Algorithm rsaAlg2 = Algorithm.RSAOAEP(null, rsaPrivateKey);
+        JWEKeyEncryptionAlgorithm rsaAlg2 = Algorithm.RSAOAEP(null, rsaPrivateKey);
         DecodedJWT decodedJWT = JWT.decode(jwe);
         if(decodedJWT.isJWE()) {
             byte[] encryptedKey = Base64.decodeBase64(decodedJWT.getKey());
@@ -179,7 +181,7 @@ public class AESCryptoTest {
 
             byte[] decryptedKey = rsaAlg2.decrypt(encryptedKey);
             CipherParams cipherParams2 = new CipherParams(decryptedKey, iv);
-            Algorithm encAlg2 = Algorithm.A128GCM(cipherParams2);
+            JWEContentEncryptionAlgorithm encAlg2 = Algorithm.A128GCM(cipherParams2);
             byte[] plainText = encAlg2.decrypt(cipherText, tag, headerBytes);
             String text = new String(plainText);
             System.out.println(text);

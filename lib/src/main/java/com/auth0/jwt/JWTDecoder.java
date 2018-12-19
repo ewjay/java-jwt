@@ -60,69 +60,6 @@ final class JWTDecoder implements DecodedJWT {
 
     @Override
     public DecodedJWT decrypt(Algorithm algorithm) throws DecryptionException {
-
-        /*
-        if(algorithm == null) {
-            throw new DecryptionException(algorithm, "Algorithm is null");
-        }
-        String algAlgId = getAlgorithm();
-        if(!getAlgorithm().equals(algorithm.getName())) {
-            throw new DecryptionException(algorithm, "alg Algorithm mismatch");
-        }
-
-        byte[] encryptedKey = Base64.decodeBase64(getKey());
-
-        byte[] iv = Base64.decodeBase64(getIV());
-        byte[] tag = Base64.decodeBase64(getAuthenticationTag());
-        byte[] headerBytes = getHeader().getBytes(StandardCharsets.UTF_8);
-        byte[] cipherText = Base64.decodeBase64(getCipherText());
-        byte[] decryptedKey = new byte[0];
-
-        if(algorithm instanceof ECDHESAlgorithm && !(algorithm instanceof ECDHESKeyWrapAlgorithm)) {
-            try {
-                decryptedKey = algorithm.generateDerivedKey();
-            } catch (KeyAgreementException e) {
-                throw new DecryptionException(algorithm, e);
-            }
-        } else if(algorithm instanceof ECDHESKeyWrapAlgorithm ||
-            algorithm instanceof AESKeyWrapAlgorithm) {
-            decryptedKey = algorithm.unwrap(encryptedKey);
-        } else {
-            decryptedKey = algorithm.decrypt(encryptedKey);
-        }
-        List<String> aeshsAlgs = Arrays.asList("A128CBC-HS256", "A192CBC-HS384", "A256CBC-HS512");
-        List<String> aesgcmAlgs = Arrays.asList("A128GCM", "A192GCM", "A256GCM");
-        if(aeshsAlgs.contains(getEncAlgorithm())) {
-
-            int mid = decryptedKey.length / 2;
-            byte[] encKey = Arrays.copyOfRange(decryptedKey, mid, decryptedKey.length);
-            byte[] macKey = Arrays.copyOfRange(decryptedKey, 0, mid);
-            CipherParams cipherParams = new CipherParams(encKey, macKey, iv);
-            Algorithm encAlg = Algorithm.getContentEncryptionAlg(getEncAlgorithm(), cipherParams);
-            byte[] plainText = encAlg.decrypt(cipherText, tag, headerBytes);
-            String payloadStr = StringUtils.newStringUtf8(plainText);
-            if("JWT".equals(getContentType())) {
-                return JWT.decode(payloadStr);
-            } else {
-                final JWTParser converter = new JWTParser();
-                payload = converter.parsePayload(payloadStr);
-                Map<String, Claim> claims = payload.getClaims();
-            }
-        } else if (aesgcmAlgs.contains(getEncAlgorithm())) {
-            CipherParams cipherParams = new CipherParams(decryptedKey, iv);
-            Algorithm encAlg = Algorithm.getContentEncryptionAlg(getEncAlgorithm(), cipherParams);
-            byte[] plainText = encAlg.decrypt(cipherText, tag, headerBytes);
-            String payloadStr = StringUtils.newStringUtf8(plainText);
-            if("JWT".equals(getContentType())) {
-                return JWT.decode(payloadStr);
-            } else {
-                final JWTParser converter = new JWTParser();
-                payload = converter.parsePayload(payloadStr);
-                Map<String, Claim> claims = payload.getClaims();
-            }
-        }
-        */
-
         byte[] plainText = new JWTDecryptor(algorithm).decrypt(getToken());
         String payloadStr = StringUtils.newStringUtf8(plainText);
         if("JWT".equals(getContentType())) {

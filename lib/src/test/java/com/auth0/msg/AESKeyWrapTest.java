@@ -1,6 +1,7 @@
 package com.auth0.msg;
 
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.algorithms.JWEKeyWrapAlgorithm;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 import org.junit.Assert;
@@ -39,7 +40,7 @@ public class AESKeyWrapTest {
     public void testKeyWrap() throws Exception {
         byte[] kek = Base64.decodeBase64("GawgguFyGrWKav7AX4VKUg");
         System.out.printf("kek = %s\n", Hex.encodeHexString(kek));
-        Algorithm keyWrap = Algorithm.AES128Keywrap(kek);
+        JWEKeyWrapAlgorithm keyWrap = Algorithm.AES128Keywrap(kek);
 
         short[] cekShorts = new short[] {
             4, 211, 31, 197, 84, 157, 252, 254, 11, 100, 157, 250, 63, 170, 106,

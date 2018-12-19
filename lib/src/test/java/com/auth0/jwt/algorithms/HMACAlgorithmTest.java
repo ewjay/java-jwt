@@ -39,8 +39,8 @@ public class HMACAlgorithmTest {
     @Test
     public void shouldPassHMAC256Verification() throws Exception {
         String jwt = "eyJhbGciOiJIUzI1NiIsImN0eSI6IkpXVCJ9.eyJpc3MiOiJhdXRoMCJ9.mZ0m_N1J4PgeqWmi903JuUoDRZDBPB7HwkS4nVyWH1M";
-        Algorithm algorithmString = Algorithm.HMAC256("secret");
-        Algorithm algorithmBytes = Algorithm.HMAC256("secret".getBytes(StandardCharsets.UTF_8));
+        JWSAlgorithm algorithmString = Algorithm.HMAC256("secret");
+        JWSAlgorithm algorithmBytes = Algorithm.HMAC256("secret".getBytes(StandardCharsets.UTF_8));
         DecodedJWT decoded = JWT.decode(jwt);
         algorithmString.verify(decoded);
         algorithmBytes.verify(decoded);
@@ -51,7 +51,7 @@ public class HMACAlgorithmTest {
         exception.expect(SignatureVerificationException.class);
         exception.expectMessage("The Token's Signature resulted invalid when verified using the Algorithm: HmacSHA256");
         String jwt = "eyJhbGciOiJIUzI1NiIsImN0eSI6IkpXVCJ9.eyJpc3MiOiJhdXRoMCJ9.mZ0m_N1J4PgeqWmi903JuUoDRZDBPB7HwkS4nVyWH1M";
-        Algorithm algorithm = Algorithm.HMAC256("not_real_secret");
+        JWSAlgorithm algorithm = Algorithm.HMAC256("not_real_secret");
         algorithm.verify(JWT.decode(jwt));
     }
 
@@ -60,15 +60,15 @@ public class HMACAlgorithmTest {
         exception.expect(SignatureVerificationException.class);
         exception.expectMessage("The Token's Signature resulted invalid when verified using the Algorithm: HmacSHA256");
         String jwt = "eyJhbGciOiJIUzI1NiIsImN0eSI6IkpXVCJ9.eyJpc3MiOiJhdXRoMCJ9.mZ0m_N1J4PgeqWmi903JuUoDRZDBPB7HwkS4nVyWH1M";
-        Algorithm algorithm = Algorithm.HMAC256("not_real_secret".getBytes(StandardCharsets.UTF_8));
+        JWSAlgorithm algorithm = Algorithm.HMAC256("not_real_secret".getBytes(StandardCharsets.UTF_8));
         algorithm.verify(JWT.decode(jwt));
     }
 
     @Test
     public void shouldPassHMAC384Verification() throws Exception {
         String jwt = "eyJhbGciOiJIUzM4NCIsImN0eSI6IkpXVCJ9.eyJpc3MiOiJhdXRoMCJ9.uztpK_wUMYJhrRv8SV-1LU4aPnwl-EM1q-wJnqgyb5DHoDteP6lN_gE1xnZJH5vw";
-        Algorithm algorithmString = Algorithm.HMAC384("secret");
-        Algorithm algorithmBytes = Algorithm.HMAC384("secret".getBytes(StandardCharsets.UTF_8));
+        JWSAlgorithm algorithmString = Algorithm.HMAC384("secret");
+        JWSAlgorithm algorithmBytes = Algorithm.HMAC384("secret".getBytes(StandardCharsets.UTF_8));
         DecodedJWT decoded = JWT.decode(jwt);
         algorithmString.verify(decoded);
         algorithmBytes.verify(decoded);
@@ -79,7 +79,7 @@ public class HMACAlgorithmTest {
         exception.expect(SignatureVerificationException.class);
         exception.expectMessage("The Token's Signature resulted invalid when verified using the Algorithm: HmacSHA384");
         String jwt = "eyJhbGciOiJIUzM4NCIsImN0eSI6IkpXVCJ9.eyJpc3MiOiJhdXRoMCJ9.uztpK_wUMYJhrRv8SV-1LU4aPnwl-EM1q-wJnqgyb5DHoDteP6lN_gE1xnZJH5vw";
-        Algorithm algorithm = Algorithm.HMAC384("not_real_secret");
+        JWSAlgorithm algorithm = Algorithm.HMAC384("not_real_secret");
         algorithm.verify(JWT.decode(jwt));
     }
 
@@ -88,15 +88,15 @@ public class HMACAlgorithmTest {
         exception.expect(SignatureVerificationException.class);
         exception.expectMessage("The Token's Signature resulted invalid when verified using the Algorithm: HmacSHA384");
         String jwt = "eyJhbGciOiJIUzM4NCIsImN0eSI6IkpXVCJ9.eyJpc3MiOiJhdXRoMCJ9.uztpK_wUMYJhrRv8SV-1LU4aPnwl-EM1q-wJnqgyb5DHoDteP6lN_gE1xnZJH5vw";
-        Algorithm algorithm = Algorithm.HMAC384("not_real_secret".getBytes(StandardCharsets.UTF_8));
+        JWSAlgorithm algorithm = Algorithm.HMAC384("not_real_secret".getBytes(StandardCharsets.UTF_8));
         algorithm.verify(JWT.decode(jwt));
     }
 
     @Test
     public void shouldPassHMAC512Verification() throws Exception {
         String jwt = "eyJhbGciOiJIUzUxMiIsImN0eSI6IkpXVCJ9.eyJpc3MiOiJhdXRoMCJ9.VUo2Z9SWDV-XcOc_Hr6Lff3vl7L9e5Vb8ThXpmGDFjHxe3Dr1ZBmUChYF-xVA7cAdX1P_D4ZCUcsv3IefpVaJw";
-        Algorithm algorithmString = Algorithm.HMAC512("secret");
-        Algorithm algorithmBytes = Algorithm.HMAC512("secret".getBytes(StandardCharsets.UTF_8));
+        JWSAlgorithm algorithmString = Algorithm.HMAC512("secret");
+        JWSAlgorithm algorithmBytes = Algorithm.HMAC512("secret".getBytes(StandardCharsets.UTF_8));
         DecodedJWT decoded = JWT.decode(jwt);
         algorithmString.verify(decoded);
         algorithmBytes.verify(decoded);
@@ -107,7 +107,7 @@ public class HMACAlgorithmTest {
         exception.expect(SignatureVerificationException.class);
         exception.expectMessage("The Token's Signature resulted invalid when verified using the Algorithm: HmacSHA512");
         String jwt = "eyJhbGciOiJIUzUxMiIsImN0eSI6IkpXVCJ9.eyJpc3MiOiJhdXRoMCJ9.VUo2Z9SWDV-XcOc_Hr6Lff3vl7L9e5Vb8ThXpmGDFjHxe3Dr1ZBmUChYF-xVA7cAdX1P_D4ZCUcsv3IefpVaJw";
-        Algorithm algorithm = Algorithm.HMAC512("not_real_secret");
+        JWSAlgorithm algorithm = Algorithm.HMAC512("not_real_secret");
         algorithm.verify(JWT.decode(jwt));
     }
 
@@ -116,7 +116,7 @@ public class HMACAlgorithmTest {
         exception.expect(SignatureVerificationException.class);
         exception.expectMessage("The Token's Signature resulted invalid when verified using the Algorithm: HmacSHA512");
         String jwt = "eyJhbGciOiJIUzUxMiIsImN0eSI6IkpXVCJ9.eyJpc3MiOiJhdXRoMCJ9.VUo2Z9SWDV-XcOc_Hr6Lff3vl7L9e5Vb8ThXpmGDFjHxe3Dr1ZBmUChYF-xVA7cAdX1P_D4ZCUcsv3IefpVaJw";
-        Algorithm algorithm = Algorithm.HMAC512("not_real_secret".getBytes(StandardCharsets.UTF_8));
+        JWSAlgorithm algorithm = Algorithm.HMAC512("not_real_secret".getBytes(StandardCharsets.UTF_8));
         algorithm.verify(JWT.decode(jwt));
     }
 
@@ -130,7 +130,7 @@ public class HMACAlgorithmTest {
         when(crypto.verifySignatureFor(anyString(), any(byte[].class), any(byte[].class), any(byte[].class)))
                 .thenThrow(NoSuchAlgorithmException.class);
 
-        Algorithm algorithm = new HMACAlgorithm(crypto, "some-alg", "some-algorithm", "secret".getBytes(StandardCharsets.UTF_8));
+        JWSAlgorithm algorithm = new HMACAlgorithm(crypto, "some-alg", "some-algorithm", "secret".getBytes(StandardCharsets.UTF_8));
         String jwt = "eyJhbGciOiJIUzI1NiIsImN0eSI6IkpXVCJ9.eyJpc3MiOiJhdXRoMCJ9.mZ0m_N1J4PgeqWmi903JuUoDRZDBPB7HwkS4nVyWH1M";
         algorithm.verify(JWT.decode(jwt));
     }
@@ -145,7 +145,7 @@ public class HMACAlgorithmTest {
         when(crypto.verifySignatureFor(anyString(), any(byte[].class), any(byte[].class), any(byte[].class)))
                 .thenThrow(InvalidKeyException.class);
 
-        Algorithm algorithm = new HMACAlgorithm(crypto, "some-alg", "some-algorithm", "secret".getBytes(StandardCharsets.UTF_8));
+        JWSAlgorithm algorithm = new HMACAlgorithm(crypto, "some-alg", "some-algorithm", "secret".getBytes(StandardCharsets.UTF_8));
         String jwt = "eyJhbGciOiJIUzI1NiIsImN0eSI6IkpXVCJ9.eyJpc3MiOiJhdXRoMCJ9.mZ0m_N1J4PgeqWmi903JuUoDRZDBPB7HwkS4nVyWH1M";
         algorithm.verify(JWT.decode(jwt));
     }
@@ -159,7 +159,7 @@ public class HMACAlgorithmTest {
 
     @Test
     public void shouldDoHMAC256SigningWithBytes() throws Exception {
-        Algorithm algorithm = Algorithm.HMAC256("secret".getBytes(StandardCharsets.UTF_8));
+        JWSAlgorithm algorithm = Algorithm.HMAC256("secret".getBytes(StandardCharsets.UTF_8));
 
         String jwtContent = String.format("%s.%s", HS256Header, auth0IssPayload);
         byte[] contentBytes = jwtContent.getBytes(StandardCharsets.UTF_8);
@@ -175,7 +175,7 @@ public class HMACAlgorithmTest {
 
     @Test
     public void shouldDoHMAC384SigningWithBytes() throws Exception {
-        Algorithm algorithm = Algorithm.HMAC384("secret".getBytes(StandardCharsets.UTF_8));
+        JWSAlgorithm algorithm = Algorithm.HMAC384("secret".getBytes(StandardCharsets.UTF_8));
 
         String jwtContent = String.format("%s.%s", HS384Header, auth0IssPayload);
         byte[] contentBytes = jwtContent.getBytes(StandardCharsets.UTF_8);
@@ -191,7 +191,7 @@ public class HMACAlgorithmTest {
 
     @Test
     public void shouldDoHMAC512SigningWithBytes() throws Exception {
-        Algorithm algorithm = Algorithm.HMAC512("secret".getBytes(StandardCharsets.UTF_8));
+        JWSAlgorithm algorithm = Algorithm.HMAC512("secret".getBytes(StandardCharsets.UTF_8));
 
         String jwtContent = String.format("%s.%s", HS512Header, auth0IssPayload);
         byte[] contentBytes = jwtContent.getBytes(StandardCharsets.UTF_8);
@@ -207,7 +207,7 @@ public class HMACAlgorithmTest {
 
     @Test
     public void shouldDoHMAC256SigningWithString() throws Exception {
-        Algorithm algorithm = Algorithm.HMAC256("secret");
+        JWSAlgorithm algorithm = Algorithm.HMAC256("secret");
 
         String jwtContent = String.format("%s.%s", HS256Header, auth0IssPayload);
         byte[] contentBytes = jwtContent.getBytes(StandardCharsets.UTF_8);
@@ -223,7 +223,7 @@ public class HMACAlgorithmTest {
 
     @Test
     public void shouldDoHMAC384SigningWithString() throws Exception {
-        Algorithm algorithm = Algorithm.HMAC384("secret");
+        JWSAlgorithm algorithm = Algorithm.HMAC384("secret");
 
         String jwtContent = String.format("%s.%s", HS384Header, auth0IssPayload);
         byte[] contentBytes = jwtContent.getBytes(StandardCharsets.UTF_8);
@@ -239,7 +239,7 @@ public class HMACAlgorithmTest {
 
     @Test
     public void shouldDoHMAC512SigningWithString() throws Exception {
-        Algorithm algorithm = Algorithm.HMAC512("secret");
+        JWSAlgorithm algorithm = Algorithm.HMAC512("secret");
 
         String jwtContent = String.format("%s.%s", HS512Header, auth0IssPayload);
         byte[] contentBytes = jwtContent.getBytes(StandardCharsets.UTF_8);
@@ -263,7 +263,7 @@ public class HMACAlgorithmTest {
         when(crypto.createSignatureFor(anyString(), any(byte[].class), any(byte[].class)))
                 .thenThrow(NoSuchAlgorithmException.class);
 
-        Algorithm algorithm = new HMACAlgorithm(crypto, "some-alg", "some-algorithm", "secret".getBytes(StandardCharsets.UTF_8));
+        JWSAlgorithm algorithm = new HMACAlgorithm(crypto, "some-alg", "some-algorithm", "secret".getBytes(StandardCharsets.UTF_8));
         algorithm.sign(new byte[0]);
     }
 
@@ -277,7 +277,7 @@ public class HMACAlgorithmTest {
         when(crypto.createSignatureFor(anyString(), any(byte[].class), any(byte[].class)))
                 .thenThrow(InvalidKeyException.class);
 
-        Algorithm algorithm = new HMACAlgorithm(crypto, "some-alg", "some-algorithm", "secret".getBytes(StandardCharsets.UTF_8));
+        JWSAlgorithm algorithm = new HMACAlgorithm(crypto, "some-alg", "some-algorithm", "secret".getBytes(StandardCharsets.UTF_8));
         algorithm.sign(new byte[0]);
     }
 
